@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Statistics about file types in git repo grouped by file extension.
+#
+# Example output:
+#
+# $ git-file-stats
+#  48 json
+#  53 js
+#  54 xml
+# 106 xsd
+
+git ls-files | # list files
+  xargs -n 1 -i sh -c 'v="{}"; echo "${v##*.}"' | # get extensions
+  sort | uniq -c | # group
+  sort -n -k 1 # sort by first column

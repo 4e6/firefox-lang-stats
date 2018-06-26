@@ -28,7 +28,7 @@ echo_table_line 'Rust' $(git_loc '*.rs') ','
 c=$(git_loc '*.c')
 echo_table_line 'C' $((c + h/3)) ','
 cpp=$(git_loc '*.cc' '*.cpp' '*.cxx' '*.hxx')
-echo_table_line 'CPP' $((cpp + 2*h/3)) ','
+echo_table_line 'C++' $((cpp + 2*h/3)) ','
 echo_table_line 'JavaScript' $(git_loc '*.jsm' '*.jsx' '*.js') ','
 echo_table_line 'HTML' $(git_loc '*.htm' '*.html' '*.xhtml' '*.xht' '*.css') ','
 echo_table_line 'Python' $(git_loc '*.py') ','

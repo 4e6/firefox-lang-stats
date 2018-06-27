@@ -37,16 +37,22 @@ echo_data_line()
   echo "{\"name\":\"$1\", \"loc\":$2}$3"
 }
 
-echo_date()
+echo_meta_date()
 {
-  echo "\"date\": \"$1\"$2"
+  echo "\"meta_date\": \"$1\"$2"
+}
+
+echo_title_date()
+{
+  echo "\"title_date\": \"$1\"$2"
 }
 
 cd $GECKO_DEV
 
 echo_header
 
-echo_date "$(date +'%b %Y')" ','
+echo_meta_date "$(date -u --iso-8601=seconds)" ','
+echo_title_date "$(date +'%b %Y')" ','
 
 echo_data_header
 

@@ -4,14 +4,24 @@ sudo: false
 
 install:
   - npm install -g mustache
-  - travis_retry git clone --depth 1 https://github.com/mozilla/gecko-dev.git
-  - dev/build-data ./gecko-dev | tee data.json
+  - travis_retry git clone --depth 1 https://github.com/mozilla/gecko-dev.git ~/gecko-dev
+  - dev/build-data ~/gecko-dev > data.json
+  - cat data.json
 
 script:
-  - mustache data.json index.mustache | tee index.html
+  - mustache data.json index.mustache > index.html
+  - cat index.html
+
+before_deploy:
+  - git clean -df
 
 deploy:
-  provider: script
-  script: git status
-  on:
-    branch: travis-ci
+  provider: pages
+  skip-cleanup: true
+  github-token: $GITHUB_TOKEN
+  keep-history: true
+  verbose: true
+
+env:
+  global:
+    secure: KZOqiFI+9z5L/r086wprj7bZh9CEb0D4F00tiwAFZYBS9mq4HnnL2zI4yRlLpbmlCxvu77O2+4+wPgRJStBjDcChJxQBJG664+fY1fyDO/VS4V2GWEsCOALHi5dlc/3A/vrNNmysmEBmzWFu+DDrCC+21SbfjnwMwuUrCkowdebxAs6tovmN55/48yYf3AMJADcARX9HvtC5/Tg3+q07XFXn+J+D8X0BuUcz8uJfkE7VTKC84VNz9g94WGW6F94/RnoCGUj05Nt6FZDhKaFwBDeBZjX4TsR87FscBdryt2pdOMY3NaBF2R/BVZiHs2CKT2ZR32/jZQ37cm2aIRJuBdIJ4vtE0dToKe9ozUtoWQVarNqZee8NbAF7yTot83OayOT8PCpczU+7FvnqO0BD9XdXtqxFWC5eO6q2GrjgLoR5i6NpLOndW3O1HBTVT/ae6rz23OC/E6m6h1SRmX7N8V6GDr947wI36QCn76hDaUT3pgJlDtTLjrpJkUMAuKndog/6XfL5fWhHGVpr5w+SoinPJGgKmvGpxNtbaexgq3HQD+vGSgb0cdcbpI7SX1sGZnF9Uc41fcA/0EsskQ9gYXLX0mI5B8i1BtFXoOELNasL0hl+Hvg87v3eK3GCQVJZhNDSJyxBpKFi+BaAzWKVOD670zo4uV7AcKE6LGQeFvc=

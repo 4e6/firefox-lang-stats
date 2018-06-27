@@ -1,0 +1,79 @@
+#!/bin/sh
+
+GECKO_DEV=$1
+
+[ -z $GECKO_DEV ] && { echo 'Missing path to repo argument'; exit 1; }
+
+# count lines of code by file extension
+git_loc()
+{
+  stats_total=$(git ls-files -z "$@" | wc -l --files0-from=- | tail -n 1)
+  echo "${stats_total% total}"
+}
+
+echo_header()
+{
+  echo '{'
+}
+
+echo_footer()
+{
+  echo '}'
+}
+
+echo_data_header()
+{
+  echo '"lang": ['
+}
+
+echo_data_footer()
+{
+  echo ']'
+}
+
+# print a row for a diagram
+echo_data_line()
+{
+  echo "{\"name\":\"$1\", \"loc\":$2}$3"
+}
+
+echo_meta_date()
+{
+  echo "\"meta_date\": \"$1\"$2"
+}
+
+echo_title_date()
+{
+  echo "\"title_date\": \"$1\"$2"
+}
+
+cd $GECKO_DEV
+
+echo_header
+
+echo_meta_date "$(date -u --iso-8601=seconds)" ','
+echo_title_date "$(date +'%b %Y')" ','
+
+echo_data_header
+
+# We can't distinguish between CPP and C headers by file extension
+# But we know that ratio of CPP to C files in the project is 2 to 1
+# So we will add 2/3 of headers LOCs to CPP lines and 1/3 to C lines
+h=$(git_loc '*.h')
+
+echo_data_line 'Rust' $(git_loc '*.rs') ','
+c=$(git_loc '*.c')
+echo_data_line 'C' $((c + h/3)) ','
+cpp=$(git_loc '*.cc' '*.cpp' '*.cxx' '*.hxx')
+echo_data_line 'C++' $((cpp + 2*h/3)) ','
+echo_data_line 'JavaScript' $(git_loc '*.jsm' '*.jsx' '*.js') ','
+echo_data_line 'HTML' $(git_loc '*.htm' '*.html' '*.xhtml' '*.xht' '*.css') ','
+echo_data_line 'Python' $(git_loc '*.py') ','
+echo_data_line 'Java' $(git_loc '*.java') ','
+echo_data_line 'Assembly' $(git_loc '*.asm')
+
+echo_data_footer
+
+echo_footer
+
+cd - > /dev/null

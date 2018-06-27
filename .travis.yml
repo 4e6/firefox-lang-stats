@@ -1,0 +1,17 @@
+language: node_js
+
+sudo: false
+
+install:
+  - npm install -g mustache
+  - travis_retry git clone --depth 1 https://github.com/mozilla/gecko-dev.git
+  - dev/build-data ./gecko-dev | tee data.json
+
+script:
+  - mustache data.json index.mustache | tee index.html
+
+deploy:
+  provider: script
+  script: git status
+  on:
+    branch: travis-ci

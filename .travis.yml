@@ -21,6 +21,8 @@ deploy:
   github-token: $GITHUB_TOKEN
   keep-history: true
   verbose: true
+  on:
+    branch: deploy-pages
 
 env:
   global:

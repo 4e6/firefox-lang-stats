@@ -12,9 +12,6 @@ script:
   - mustache data.json index.mustache > index.html
   - cat index.html
 
-before_deploy:
-  - git clean -df
-
 deploy:
   provider: pages
   skip-cleanup: true

@@ -22,7 +22,7 @@ deploy:
   keep-history: true
   verbose: true
   on:
-    branch: deploy-pages
+    branch: master
 
 env:
   global:

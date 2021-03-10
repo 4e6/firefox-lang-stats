@@ -1,14 +1,14 @@
 {
-"meta_date": "2021-03-03T10:26:09+00:00",
+"meta_date": "2021-03-10T10:27:07+00:00",
 "title_date": "Mar 2021",
 "lang": [
-{"name":"Rust", "loc":3043361},
-{"name":"C", "loc":4248969},
-{"name":"C++", "loc":8489520},
-{"name":"JavaScript", "loc":8518218},
-{"name":"HTML", "loc":5107751},
-{"name":"Python", "loc":1307136},
-{"name":"Java", "loc":247289},
+{"name":"Rust", "loc":3060387},
+{"name":"C", "loc":4249158},
+{"name":"C++", "loc":8493227},
+{"name":"JavaScript", "loc":8524254},
+{"name":"HTML", "loc":5114781},
+{"name":"Python", "loc":1339546},
+{"name":"Java", "loc":247339},
 {"name":"Assembly", "loc":193796}
 ]
 }

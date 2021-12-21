@@ -1,0 +1,35 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/checkout@v2
+        with:
+          repository: mozilla/gecko-dev
+          path: gecko-dev
+
+      - run: npm install -g mustache
+
+      - name: Build
+        run: |
+          mkdir build
+          dev/build-data ./gecko-dev > build/data.json
+          cat build/data.json
+          mustache build/data.json index.mustache > build/index.html
+          cat build/index.html
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@4.1.8
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          branch: gh-pages # The branch the action should deploy to.
+          folder: build # The folder the action should deploy.

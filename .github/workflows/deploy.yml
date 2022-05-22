@@ -29,6 +29,11 @@ jobs:
           cat build/data.json
           mustache build/data.json index.mustache > build/index.html
           cat build/index.html
+          
+      - name: Diff file stats
+        run: |
+          (cd gecko-dev; ../dev/git-file-stats > ../git-file-stats.log)
+          git diff
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@4.1.8

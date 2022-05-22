@@ -1,13 +1,12 @@
 # firefox-lang-stats
 
-How much Rust in Firefox? You can see the chart [here][gh-pages].
+How much Rust in Firefox? See [the chart].
 
-Repository contains scripts collecting the language statistics for
-[mozilla/gecko-dev] repository. Gathered data then assembled into a pie chart
-`index.mustache`.
-
-Page is updated weekly with a Travis Cron job. See the `date` meta tag for
-the exact build time.
+Repository contains scripts collecting language statistics for
+[mozilla/gecko-dev] repository. The data is saved as JSON in
+[gh-pages] branch along with a pie chart, which is rendered from
+`index.mustache` template. The GitHub Pages is updated by weekly
+CI job, with the build time recorded in `date` meta tag.
 
 # Build
 
@@ -25,4 +24,5 @@ mustache data.json index.mustache > index.html
 
 
 [mozilla/gecko-dev]: https://github.com/mozilla/gecko-dev
-[gh-pages]: https://4e6.github.io/firefox-lang-stats/
+[the chart]: https://4e6.github.io/firefox-lang-stats/
+[gh-pages]: https://github.com/4e6/firefox-lang-stats/tree/gh-pages

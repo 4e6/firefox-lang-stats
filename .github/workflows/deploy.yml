@@ -31,7 +31,7 @@ jobs:
           mustache build/data.json index.mustache > build/index.html
           cat build/index.html
           
-      - name: Diff file stats
+      - name: Gather file extension statistics
         run: |
           (cd gecko-dev; ../dev/git-file-stats > ../build/git-file-stats.txt)
 

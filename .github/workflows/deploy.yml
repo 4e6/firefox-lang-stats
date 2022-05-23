@@ -33,8 +33,7 @@ jobs:
           
       - name: Diff file stats
         run: |
-          (cd gecko-dev; ../dev/git-file-stats > ../git-file-stats.log)
-          git diff
+          (cd gecko-dev; ../dev/git-file-stats > ../build/git-file-stats.txt)
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@4.1.8

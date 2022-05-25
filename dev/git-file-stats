@@ -11,10 +11,7 @@
 # 106 xsd
 
 git ls-files |           # list files
-  xargs -n 1 basename |  # filename without path
-  grep "\." |            # filenames with extension
-  rev | cut -d . -f 1 | rev |  # extension only (delimit by . and get 1st field from the end)
-  #cut -d . -f 2- |       # an attempt to catch double extensions (delimit by . and get fields from 2nd)
+  grep -Po "(?<=\.)\w+$" |   # match strings and show only matched lines
   sort |                 # sort before counting to avoid group splits
   uniq -c |              # count unique
   sort -n -k 1           # sort naturally by count (first column)

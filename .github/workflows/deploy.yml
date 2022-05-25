@@ -33,7 +33,7 @@ jobs:
           
       - name: Gather file extension statistics
         run: |
-          (cd gecko-dev; ../dev/git-file-stats > ../build/git-file-stats.txt)
+          (cd gecko-dev; ../dev/git-file-stats > ../build/extensions.txt)
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@4.1.8

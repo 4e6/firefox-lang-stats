@@ -31,9 +31,9 @@ jobs:
           mustache build/data.json index.mustache > build/index.html
           cat build/index.html
           
-      - name: Gather file extension statistics
+      - name: Gather commits by day and file extension statistics
         run: |
-          (cd gecko-dev; ../dev/git-file-stats > ../build/extensions.txt)
+          ./01stats.sh gecko-dev build
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@4.1.8

@@ -8,6 +8,9 @@ BUILDDIR=$(readlink -f "${2:-$SCRIPTDIR}")
 
 (cd "$REPODIR" || exit
 
+  echo "unshallow $REPODIR"
+  git fetch --unshallow
+
   echo "writing $BUILDDIR/commits-per-day.txt"
   git log --date=short --format="%cd" --reverse --topo-order |
     uniq -c > "$BUILDDIR"/commits-per-day.txt

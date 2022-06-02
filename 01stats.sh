@@ -8,8 +8,9 @@ BUILDDIR=$(readlink -f "${2:-$SCRIPTDIR}")
 
 (cd "$REPODIR" || exit
 
-  echo "unshallow $REPODIR"
-  git fetch --unshallow
+  if $(git rev-parse --is-shallow-repository); then
+    echo "WARNING: Repository checkout is shallow. Data is incomplete."
+  fi
 
   echo "writing $BUILDDIR/commits-per-day.txt"
   git log --date=short --format="%cd" --reverse --topo-order |

@@ -20,6 +20,7 @@ jobs:
         with:
           repository: mozilla/gecko-dev
           path: gecko-dev
+          ref: master
           fetch-depth: 0
 
       - run: npm install -g mustache

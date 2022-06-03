@@ -10,7 +10,8 @@
 #  54 xml
 # 106 xsd
 
-git ls-files | # list files
-  xargs -n 1 -i sh -c 'v="{}"; echo "${v##*.}"' | # get extensions
-  sort | uniq -c | # group
-  sort -n -k 1 # sort by first column
+git ls-files |           # list files
+  grep -Po "(?<=\.)\w+$" |   # match strings and show only matched lines
+  sort |                 # sort before counting to avoid group splits
+  uniq -c |              # count unique
+  sort -n -k 1           # sort naturally by count (first column)

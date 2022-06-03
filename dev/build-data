@@ -34,7 +34,7 @@ echo_data_footer()
 # print a row for a diagram
 echo_data_line()
 {
-  echo "{\"name\":\"$1\", \"loc\":$2}$3"
+  echo "  {\"name\":\"$1\", \"loc\":$2}$3"
 }
 
 echo_meta_date()

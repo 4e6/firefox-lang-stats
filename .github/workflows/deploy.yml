@@ -1,10 +1,11 @@
-name: GitHub Pages
+name: Build Stats
 
 on:
   push:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
   schedule:
     # run every Sunday at 22:12 UTC
     - cron: '12 22 * * 0'
@@ -13,12 +14,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/checkout@v2
-        with:
-          repository: mozilla/gecko-dev
-          path: gecko-dev
+      - name: Clone `gecko-dev`
+        run: |
+          git clone https://github.com/mozilla/gecko-dev.git
 
       - run: npm install -g mustache
 
@@ -29,6 +29,10 @@ jobs:
           cat build/data.json
           mustache build/data.json index.mustache > build/index.html
           cat build/index.html
+          
+      - name: Gather commits by day and file extension statistics
+        run: |
+          ./01stats.sh gecko-dev build
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@4.1.8

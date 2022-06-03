@@ -16,12 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/checkout@v3
-        with:
-          repository: mozilla/gecko-dev
-          path: gecko-dev
-          ref: master
-          fetch-depth: 0
+      - name: Clone `gecko-dev`
+        run: |
+          git clone https://github.com/mozilla/gecko-dev.git
 
       - run: npm install -g mustache
 

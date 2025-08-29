@@ -17,15 +17,15 @@ jobs:
 
       - uses: actions/checkout@v2
         with:
-          repository: mozilla/gecko-dev
-          path: gecko-dev
+          repository: mozilla-firefox/firefox
+          path: firefox
 
       - run: npm install -g mustache
 
       - name: Build
         run: |
           mkdir build
-          dev/build-data ./gecko-dev > build/data.json
+          dev/build-data ./firefox > build/data.json
           cat build/data.json
           mustache build/data.json index.mustache > build/index.html
           cat build/index.html

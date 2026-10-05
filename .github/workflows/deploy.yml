@@ -16,7 +16,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # the head artifact has its own 15-minute limit and becomes null when it runs out
+    timeout-minutes: 30 # a normal run (tests, append, build) takes a few minutes; this stops a hung git fetch
     # one run at a time per ref; a pull-request run never cancels or waits for a run on main
     concurrency:
       group: history-${{ github.ref }}
@@ -49,10 +49,8 @@ jobs:
         run: |
           TIME=; /usr/bin/time -v true 2>/dev/null && TIME='/usr/bin/time -v' # GNU time: wall time and peak memory
           mkdir build
-          # --with-artifact: head.artifact from the newest finished mozilla-central build; null (never a failure)
-          # when it cannot be computed. It lives only in build/data.json; data/ is not touched by this step
-          $TIME python3 dev/history.py build-site data/history.json --repo firefox --out build \
-            --with-artifact --artifact-deadline 900
+          # data/ is not touched by this step
+          $TIME python3 dev/history.py build-site data/history.json --repo firefox --out build
           cp site/index.html rustacean-orig-noshadow.ico rustacean-orig-noshadow.png build/
           # docs/methodology.md -> build/methodology.html (stdlib only; exits 1 on Markdown it does not support)
           python3 dev/render_docs.py docs/methodology.md --page site/index.html --out build/methodology.html
@@ -64,13 +62,13 @@ jobs:
           site = json.load(open('build/data.json'))
           hist = json.load(open('data/history.json'))
           assert site['releases'] == hist['releases'], 'releases differ from data/history.json'
+          assert site['method_version'] == hist['method_version'] == 2, 'method_version is not 2'
+          assert site['browser_excluded_prefixes'] == hist['browser_excluded_prefixes'], 'browser_excluded_prefixes differ'
+          assert sorted(site['head']) == ['all', 'browser', 'date', 'sha'], 'head keys: %s' % sorted(site['head'])
+          assert all(sorted(r) == ['all', 'browser', 'date', 'sha', 'tag', 'v'] for r in site['releases']), 'release keys'
           assert site['head']['sha'] and sum(site['head']['all'].values()) > 0, 'no head point'
+          assert sum(site['head']['browser'].values()) > 0, 'empty head browser view'
           print('build/: %d releases, head %s (%s)' % (len(site['releases']), site['head']['sha'][:12], site['head']['date']))
-          a = site['head']['artifact']
-          keys = ('rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'asm')
-          n = 0 if a is None else sum(a.get(k) or 0 for k in keys)
-          print('head artifact: none this run' if a is None else 'head artifact: build commit %s, %d lines, Rust %.2f%%'
-                % (str(a.get('sha'))[:12], n, 100.0 * (a.get('rust') or 0) / max(1, n)))
           EOF
           ls -l build
 

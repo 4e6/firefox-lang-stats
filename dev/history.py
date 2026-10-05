@@ -11,9 +11,11 @@ Subcommands:
                            `git ls-remote --tags origin`, fetch each missing tag with `git fetch --depth 1` and count it
                            (works on the workflow's depth-1 checkout, which has no tags; never lists local tags)
   head REPO                count HEAD of a checkout and print {"sha","date","all","nontest","artifact"}
-  build-site HISTORY --repo R --out DIR
+  build-site HISTORY --repo R --out DIR [--with-artifact]
                            write DIR/data.json: the history, the head point of R and the legacy fields of the old
-                           pie chart (meta_date, title_date, lang)
+                           pie chart (meta_date, title_date, lang). --with-artifact also computes head.artifact, the
+                           browser artifact of the newest finished mozilla-central linux64-opt build (dev/artifact.py);
+                           when it cannot be computed it is null and the command still succeeds
   set-artifact HISTORY --v N --symbols URL --package URL --repo R
                            compute the browser artifact of release N from its build's crashreporter-symbols.zip and
                            package (for example Mozilla's release candidates) and store it in that release's record,
@@ -456,10 +458,40 @@ def _artifact_module():
     return artifact
 
 
-def build_site(history, repo, out_dir, now=None):
-    """Write out_dir/data.json: legacy fields, the history header and releases, and the head point of `repo`."""
+def head_artifact(repo, excludes=DEFAULT_EXCLUDES, index=None, deadline=None):
+    """The `artifact` block of the newest finished mozilla-central build, or None. Never raises (except
+    KeyboardInterrupt): every failure, a bug included, is logged and gives None, so the weekly job carries on."""
+    t0 = time.time()
+    try:
+        artifact = _artifact_module()
+        ctx = artifact.Context(deadline or artifact.DEADLINE)
+        kw = {'index': index} if index else {}
+        block = artifact.try_head(repo, excludes=excludes, ctx=ctx, **kw)
+    except Exception as e:
+        import traceback
+        log('head artifact: failed (a bug): %s: %s\n%s' % (type(e).__name__, e, traceback.format_exc().rstrip()))
+        block, ctx = None, None
+    if block is None:
+        log('head artifact: none this run (reason above); head.artifact is null, the build goes on (%.0fs)'
+            % (time.time() - t0))
+        return None
+    total = sum(block[k] for k in KEYS)
+    log('head artifact: build commit %s, %d lines, Rust %.2f%%; seconds %s, bytes %s' % (
+        block['sha'][:12], total, 100.0 * block['rust'] / max(total, 1), json.dumps(ctx.stats.get('seconds')),
+        json.dumps(ctx.stats.get('bytes'))))
+    return block
+
+
+def build_site(history, repo, out_dir, now=None, with_artifact=False, artifact_index=None, artifact_deadline=None):
+    """Write out_dir/data.json: legacy fields, the history header and releases, and the head point of `repo`.
+
+    with_artifact: also compute head.artifact (null when it cannot be computed; never an error). Its `sha` is the
+    commit of the build it was counted at, which is usually a little older than head.sha."""
     meta, records = read_history(history)
     head = count_release(repo, 'HEAD', meta.get('excluded_prefixes', ()))
+    if with_artifact:
+        head['artifact'] = head_artifact(repo, tuple(meta.get('excluded_prefixes', ())), artifact_index,
+                                         artifact_deadline)
     now = now or datetime.now(timezone.utc).replace(microsecond=0)
     header = dict(legacy_fields(head['all'], meta.get('header_split', HEADER_SPLIT), now), **meta)
     path = os.path.join(out_dir, 'data.json')
@@ -539,6 +571,12 @@ def main(argv=None):
     p.add_argument('history')
     p.add_argument('--repo', required=True)
     p.add_argument('--out', required=True, help='output directory (e.g. build)')
+    p.add_argument('--with-artifact', action='store_true',
+                   help='also compute head.artifact (null, not an error, when it cannot be computed)')
+    p.add_argument('--artifact-index', metavar='NS',
+                   help='Taskcluster index namespace of the head build (default: mozilla-central linux64-opt)')
+    p.add_argument('--artifact-deadline', type=float, metavar='SECONDS',
+                   help='time limit for the head artifact (default: dev/artifact.py\'s, 20 minutes)')
 
     p = sub.add_parser('set-artifact', help='store the browser artifact of release V, computed from its build')
     p.add_argument('history')
@@ -573,7 +611,8 @@ def run(a, ap):
         else:
             sys.stdout.write(text)
     elif a.cmd == 'build-site':
-        build_site(a.history, a.repo, a.out)
+        build_site(a.history, a.repo, a.out, with_artifact=a.with_artifact, artifact_index=a.artifact_index,
+                   artifact_deadline=a.artifact_deadline)
     elif a.cmd == 'set-artifact':
         set_artifact(a.history, a.v, a.symbols, a.package, a.repo, a.kind)
 

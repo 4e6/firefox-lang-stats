@@ -16,6 +16,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # the head artifact has its own 15-minute limit and becomes null when it runs out
     # one run at a time per ref; a pull-request run never cancels or waits for a run on main
     concurrency:
       group: history-${{ github.ref }}
@@ -48,7 +49,10 @@ jobs:
         run: |
           TIME=; /usr/bin/time -v true 2>/dev/null && TIME='/usr/bin/time -v' # GNU time: wall time and peak memory
           mkdir build
-          $TIME python3 dev/history.py build-site data/history.json --repo firefox --out build
+          # --with-artifact: head.artifact from the newest finished mozilla-central build; null (never a failure)
+          # when it cannot be computed. It lives only in build/data.json; data/ is not touched by this step
+          $TIME python3 dev/history.py build-site data/history.json --repo firefox --out build \
+            --with-artifact --artifact-deadline 900
           cp site/index.html rustacean-orig-noshadow.ico rustacean-orig-noshadow.png build/
           python3 - <<'EOF'
           import json, os
@@ -59,6 +63,11 @@ jobs:
           assert site['releases'] == hist['releases'], 'releases differ from data/history.json'
           assert site['head']['sha'] and sum(site['head']['all'].values()) > 0, 'no head point'
           print('build/: %d releases, head %s (%s)' % (len(site['releases']), site['head']['sha'][:12], site['head']['date']))
+          a = site['head']['artifact']
+          keys = ('rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'asm')
+          n = 0 if a is None else sum(a.get(k) or 0 for k in keys)
+          print('head artifact: none this run' if a is None else 'head artifact: build commit %s, %d lines, Rust %.2f%%'
+                % (str(a.get('sha'))[:12], n, 100.0 * (a.get('rust') or 0) / max(1, n)))
           EOF
           ls -l build
 

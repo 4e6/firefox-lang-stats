@@ -573,6 +573,72 @@ def fake_block(sha, rust=7, kind='symbols'):
     return blk
 
 
+class BuildSiteArtifactTest(GitTestCase):
+    """build-site --with-artifact: head.artifact is the block when it can be computed, else null; never an error."""
+
+    def build(self, *extra):
+        out = self.mkdtemp()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = history.main(['build-site', self.full_history, '--repo', self.up, '--out', out] + list(extra))
+        with open(os.path.join(out, 'data.json')) as f:
+            return code, json.load(f), err.getvalue()
+
+    def test_block_is_stored_in_head(self):
+        blk = fake_block('b' * 40)
+        seen = {}
+
+        def fake_try_head(repo, **kw):
+            seen.update(kw, repo=repo)
+            return blk
+        with mock.patch.object(artifact, 'try_head', fake_try_head):
+            code, data, err = self.build('--with-artifact', '--artifact-index', 'some.index', '--artifact-deadline', '60')
+        self.assertEqual(code, 0)
+        self.assertEqual(data['head']['artifact'], blk)
+        self.assertNotEqual(data['head']['artifact']['sha'], data['head']['sha'])   # the build's commit, not head's
+        self.assertEqual(seen['repo'], self.up)
+        self.assertEqual(seen['index'], 'some.index')
+        self.assertEqual(seen['excludes'], ('mobile/',))
+        self.assertLess(seen['ctx'].deadline - seen['ctx'].t0, 61)
+        self.assertIn('head artifact: build commit bbbbbbbbbbbb', err)
+        hist = json.loads(self.full_bytes)
+        self.assertEqual(data['releases'], hist['releases'])
+
+    def test_unavailable_gives_null(self):
+        # the real try_head against an index namespace that does not exist: a 404, no network beyond that
+        urls = []
+
+        def web(req, timeout=None):
+            urls.append(req.full_url)
+            raise artifact.urllib.error.HTTPError(req.full_url, 404, 'Not Found', {}, None)
+        real = artifact.Context
+        with mock.patch.object(artifact, 'Context', lambda deadline: real(deadline, opener=web, sleep=lambda s: None)):
+            code, data, err = self.build('--with-artifact', '--artifact-index', 'no.such.index')
+        self.assertEqual(urls, [artifact.INDEX_URL.format(ns='no.such.index')])
+        self.assertEqual(code, 0)
+        self.assertIsNone(data['head']['artifact'])
+        self.assertIn('HTTP 404', err)
+        self.assertIn('head artifact: none this run', err)
+
+    def test_bug_gives_null_with_traceback(self):
+        with mock.patch.object(artifact, 'head_artifact', side_effect=KeyError('bug')):
+            code, data, err = self.build('--with-artifact')
+        self.assertEqual(code, 0)
+        self.assertIsNone(data['head']['artifact'])
+        self.assertIn('Traceback', err)
+        with mock.patch.object(artifact, 'Context', side_effect=RuntimeError('bug outside try_head')):
+            code, data, err = self.build('--with-artifact')
+        self.assertEqual(code, 0)
+        self.assertIsNone(data['head']['artifact'])
+        self.assertIn('bug outside try_head', err)
+
+    def test_without_the_flag_no_artifact_is_computed(self):
+        with mock.patch.object(artifact, 'try_head', side_effect=AssertionError('must not be called')):
+            code, data, err = self.build()
+        self.assertEqual(code, 0)
+        self.assertIsNone(data['head']['artifact'])
+
+
 class SetArtifactTest(GitTestCase):
     def copy(self):
         path = os.path.join(self.mkdtemp(), 'history.json')

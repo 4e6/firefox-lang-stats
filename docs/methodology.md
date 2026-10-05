@@ -223,13 +223,14 @@ that those releases can still be counted later. They are **not used by any view 
 
 - **Release set:** major releases, `FIREFOX_<n>_0_RELEASE` for n = 46 up to the newest major that has such a tag.
   Release 125 has no `FIREFOX_125_0_RELEASE` tag and is counted at `FIREFOX_125_0_BUILD1`, stored under `v` = 125 with
-  that tag in its record (the page notes this under the chart). A newer major that has only `BUILD` tags is not added
-  until its `_RELEASE` tag exists. 112 releases today (46 to 157). Point releases and ESRs are not included.
+  `"tag": "FIREFOX_125_0_BUILD1"` in its record; it is the only release counted at a tag other than
+  `FIREFOX_<n>_0_RELEASE`. A newer major that has only `BUILD` tags is not added until its `_RELEASE` tag exists.
+  112 releases today (46 to 157). Point releases and ESRs are not included.
 - **Date:** the committer date of the counted commit (`git log --format=%cs`). Some converted commits carry a zero
   timestamp (1970-01-01; among the 112 counted tags only `FIREFOX_123_0_RELEASE`); for those the date of the nearest first-parent ancestor
   with a real timestamp is stored. The weekly job fetches 10 more commits of such a tag to find it.
 - **x axis:** releases are placed one step apart in release order (by index, not by date); the head is one step after
-  the newest release. Dates appear in the scrubber and the data, not on the axis.
+  the newest release. Dates appear next to the Pie view's release slider and in the data, not on the axis.
 - **Immutability:** a stored release is never recounted by the weekly job, and a stored artifact is never overwritten
   (`set-artifact` refuses).
 

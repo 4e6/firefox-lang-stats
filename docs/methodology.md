@@ -97,7 +97,7 @@ a complete ranking; `moz.build` files, for instance, hold 230,981 lines and `.id
 | `.hh` (C++ headers) | 287 | 115,656 |
 | `.s` (assembly) | 62 | 38,533 |
 
-Nine of the `.ts` files are binary MPEG transport streams (media test files), not TypeScript; they hold 33,851 of
+Nine of the `.ts` files are binary MPEG transport streams (mostly media test files), not TypeScript; they hold 33,851 of
 those lines. `.hpp`, `.hh`, `.mm` and `.S` were left out to keep the language set of the original chart (plus `.mjs`); adding any
 of them is a method change (see "Changing the method").
 
@@ -251,8 +251,8 @@ One job, at most one run at a time per branch, 30-minute limit:
    appends one line, with `artifact: null`.
 3. **Build:** `history.py build-site ... --with-artifact --artifact-deadline 900` counts the head, computes the head
    artifact and writes `build/data.json`; the page, its icons and this document (rendered to `methodology.html` by
-   `dev/render_docs.py`) are added; a check fails the step if any output file is empty, if the releases in
-   `build/data.json` differ from `data/history.json`, or if there is no head point.
+   `dev/render_docs.py`) are added; a check fails the step if any output file is empty, if `index.html` does not
+   link `methodology.html`, if the releases in `build/data.json` differ from `data/history.json`, or if there is no head point.
 4. **Commit** (only on `main`, never for a pull request): if `data/` changed, commit `data: add releases` to `main`.
 5. **Deploy** (only on `main`, never for a pull request): publish `build/` to the `gh-pages` branch.
 

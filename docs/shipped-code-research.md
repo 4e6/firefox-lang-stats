@@ -383,8 +383,7 @@ other directory names, so earlier non-test values are less reliable than recent 
   `data/artifact-files/<version>.txt` on `main`: sorted repository paths, one per line, plain text so that git can delta
   them. Lists are not kept for other releases. The file for a release whose symbols are still available elsewhere can be
   rebuilt from `candidates/` or the release tarball, so only the expiring range needs a copy. If `candidates/` loses
-  more builds, a list can still be rebuilt only while its source exists, so a later loss means moving that release to
-  the same directory before it goes.  Provenance (tag, commit, symbol source, build id of each module) goes in the
+  more builds, add those releases to the directory before their zips disappear. Provenance (tag, commit, symbol source, build id of each module) goes in the
   release's `artifact` block in `history.json`, not in the list file.
 
 ## What is not counted

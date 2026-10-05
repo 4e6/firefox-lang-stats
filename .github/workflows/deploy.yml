@@ -62,8 +62,9 @@ jobs:
           site = json.load(open('build/data.json'))
           hist = json.load(open('data/history.json'))
           assert site['releases'] == hist['releases'], 'releases differ from data/history.json'
-          assert site['method_version'] == hist['method_version'] == 3, 'method_version is not 3'
+          assert site['method_version'] == hist['method_version'] == 4, 'method_version is not 4'
           assert site['browser_excluded_prefixes'] == hist['browser_excluded_prefixes'], 'browser_excluded_prefixes differ'
+          assert hist['browser_excluded_prefixes'] == ['mobile/', 'build/clang-plugin/', 'build/pgo/', 'docs/', 'python/', 'taskcluster/', 'third_party/node/', 'third_party/python/', 'tools/@types/', 'tools/lint/', 'tools/tryselect/'], 'browser_excluded_prefixes: %s' % hist['browser_excluded_prefixes']
           assert sorted(site['head']) == ['all', 'browser', 'date', 'sha'], 'head keys: %s' % sorted(site['head'])
           assert all(sorted(r) == ['all', 'browser', 'date', 'sha', 'tag', 'v'] for r in site['releases']), 'release keys'
           keys = ['rust', 'c', 'cpp', 'h', 'js', 'ts', 'html', 'py', 'java', 'kt', 'asm']

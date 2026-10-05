@@ -16,12 +16,29 @@ Subcommands:
                            write DIR/data.json: the history, the head point of R and the legacy fields of the old
                            pie chart (meta_date, title_date, lang)
 
-Two views of every commit (METHOD_VERSION 3):
+Two views of every commit (METHOD_VERSION 4):
   "all"      every tracked file whose extension is in the language set, no exclusions (mobile/ included)
-  "browser"  "all" minus the paths under a prefix of `browser_excluded_prefixes` (mobile/) and minus test paths
-             (see is_test())
+  "browser"  "all" minus the paths under a prefix of `browser_excluded_prefixes` and minus test paths (see is_test())
 `backfill` and `head` use BROWSER_EXCLUDED_PREFIXES; `append` and `build-site` take the prefixes from the history
 file's `browser_excluded_prefixes`, so new records always match the old ones.
+
+BROWSER_EXCLUDED_PREFIXES (plain path-prefix matches, chosen by hand from the tree at release 157 and checked against
+older releases; docs/methodology.md has the table with the lines under each):
+  mobile/               the Android apps (Firefox for Android, Focus, GeckoView, Android Components)
+  build/clang-plugin/   Mozilla's clang static-analysis plugin, run while compiling, not part of the browser
+  build/pgo/            the pages and server that train profile-guided optimisation builds
+  docs/                 the Firefox source documentation (Sphinx configuration and extensions)
+  python/               mach, mozbuild and the other Python build and developer tools (before release 55 also the
+                        vendored Python packages they use)
+  taskcluster/          the CI task graph, Docker images and CI scripts
+  third_party/node/     vendored Node packages (webpack, Babel and friends) used to bundle code at build time
+  third_party/python/   vendored Python packages used by the build system and the tools above
+  tools/@types/         TypeScript declaration files for type-checking the JavaScript; never compiled or shipped
+  tools/lint/           the linters (ESLint configuration and plugins, Python linters)
+  tools/tryselect/      `mach try`, which picks CI jobs to push to the try server
+Other directories under build/ and tools/ stay: some hold shipped code (tools/profiler is the Gecko Profiler,
+build/unix holds elfhack and stdc++compat, build/rust holds shim crates linked into libxul; build/stlport, in
+releases 46 to 51, was the C++ runtime of Android builds).
 
 Release set: FIREFOX_<n>_0_RELEASE for n = 46 up to the newest major with a _RELEASE tag. A major without a _RELEASE
 tag inside that range is counted at FIREFOX_<n>_0_BUILD1 and stored under v = n (only 125 today). A newer major that
@@ -33,7 +50,8 @@ rust .rs | c .c | cpp .cc .cpp .cxx .hxx .hpp .hh | h .h | js .jsm .jsx .js .mjs
 html .htm .html .xhtml .xht .css | py .py | java .java | kt .kt | asm .asm .S .s
 A blob that contains a NUL byte is binary and counts 0 lines (the .ts MPEG transport streams of the media tests,
 for example). Changing the set, the test rules, the binary rule or the views means bumping METHOD_VERSION and
-regenerating. v3 = v2 plus kt, ts, .hpp/.hh as cpp, .S/.s as asm and the binary rule.
+regenerating. v3 = v2 plus kt, ts, .hpp/.hh as cpp, .S/.s as asm and the binary rule; v4 = v3 plus the tooling
+prefixes above in BROWSER_EXCLUDED_PREFIXES ("all" is the same as in v3).
 
 How to regenerate data/history.json from scratch (about 10 minutes and 3.5 GB of disk; run it locally, not in CI):
 
@@ -68,10 +86,13 @@ import threading
 import time
 from datetime import datetime, timezone
 
-METHOD_VERSION = 3
+METHOD_VERSION = 4
 FIRST_MAJOR = 46
-# path prefixes left out of the "browser" view (never out of "all")
-BROWSER_EXCLUDED_PREFIXES = ('mobile/',)
+# path prefixes left out of the "browser" view (never out of "all"): the mobile apps and build/developer tooling
+# (what each one is: module docstring and docs/methodology.md)
+BROWSER_EXCLUDED_PREFIXES = ('mobile/', 'build/clang-plugin/', 'build/pgo/', 'docs/', 'python/', 'taskcluster/',
+                             'third_party/node/', 'third_party/python/', 'tools/@types/', 'tools/lint/',
+                             'tools/tryselect/')
 # Share of `.h` lines given to C and C++ at display time (by location about 81.5% of headers are C++).
 HEADER_SPLIT = {'c': 0.185, 'cpp': 0.815}
 

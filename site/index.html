@@ -317,7 +317,7 @@ function helpFill(pop) {
   pop.appendChild(para(['Header files (', ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp)
     + ' C++; ', ['code', '.hpp'], ' and ', ['code', '.hh'], ' count as C++, ', ['code', '.S'], ' and ', ['code', '.s'], ' as Assembly. '
     + 'TypeScript (', ['code', '.ts'], ') is shown together with JavaScript, and Kotlin (', ['code', '.kt'], ') with Java. '
-    + 'Binary ', ['code', '.ts'], ' files (video test media) are skipped. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
+    + 'Binary files (any file with a NUL byte) count 0 lines. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
 }
 function helpButton(host) {
   const btn = el('button', 'help', '?'); btn.type = 'button';
@@ -539,7 +539,11 @@ function drawPie(wrap, i) {
   for (const L of LANGS) {
     const tr = el('tr'), c0 = el('td'), sw = el('span');
     sw.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;background:var(' + L.c + ')';
-    c0.appendChild(sw); c0.appendChild(document.createTextNode(L.name)); tr.appendChild(c0);
+    // the swatch stays with the name; a long name ('JavaScript/TypeScript') may break only after a '/'
+    const [n0, ...nr] = L.name.split('/'), nm = el('span'); nm.style.whiteSpace = 'nowrap';
+    nm.appendChild(sw); nm.appendChild(document.createTextNode(n0 + (nr.length ? '/' : ''))); c0.appendChild(nm);
+    nr.forEach((x, j) => { c0.appendChild(document.createElement('wbr')); c0.appendChild(document.createTextNode(x + (j < nr.length - 1 ? '/' : ''))); });
+    tr.appendChild(c0);
     const sp = partsOf(view, L.k, i); if (sp) c0.appendChild(el('div', 'sub', sp));
     tr.appendChild(el('td', 'mono', pct(share(view, L.k, i)))); tr.appendChild(el('td', 'mono', exact(val(view, L.k, i))));
     let dd = '–';

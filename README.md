@@ -47,7 +47,7 @@ for the subcommands, the language and test rules, and the release set.
 {"meta_date":"2026-10-05T22:12:00+00:00","title_date":"Oct 2026","lang":[{"name":"Rust","loc":...}, ...],
  "method_version":3,"browser_excluded_prefixes":["mobile/"],"header_split":{"c":0.185,"cpp":0.815},
  "releases":[{"v":46,"tag":"FIREFOX_46_0_RELEASE","sha":"...","date":"2016-04-21",
-              "all":{"rust":...,"c":...,"h":...,"cpp":...,"js":...,"ts":...,"html":...,"py":...,"java":...,"kt":...,
+              "all":{"rust":...,"c":...,"cpp":...,"h":...,"js":...,"ts":...,"html":...,"py":...,"java":...,"kt":...,
                      "asm":...},
               "browser":{...the same eleven keys...}}, ...],
  "head":{"sha":"...","date":"2026-10-05","all":{...},"browser":{...}}}

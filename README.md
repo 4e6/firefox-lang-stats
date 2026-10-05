@@ -31,7 +31,8 @@ for the subcommands, the language and test rules, and the release set.
   4. on `main` only, if `data/` changed, it commits `data: add releases` as `github-actions[bot]` straight to `main`;
   5. on `main` only, it deploys `build/` to the `gh-pages` branch, replacing its whole content.
 
-  Pull-request runs do steps 1 to 3 and neither commit nor deploy. If any step fails, nothing is committed or deployed.
+  Pull-request runs do steps 1 to 3 and neither commit nor deploy. A failure in the tests, `append` or
+  `build-site` commits and deploys nothing.
 
 ### `build/data.json`
 

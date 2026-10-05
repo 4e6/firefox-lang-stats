@@ -57,7 +57,8 @@ I confirmed on 2026-10-05 that it resolves to the build of `00a4d527` and that t
 
 ### Proposed weekly job
 
-1. Resolve the `latest.firefox.linux64-opt` index entry to a task id and read the git sha from its routes. Do not
+1. Resolve the `latest.firefox.linux64-opt` index entry to a task id and read the git sha from its routes (they hold two 40-hex revisions: an hg one,
+   which GitHub does not know, and a git one; use the one that exists in `mozilla-firefox/firefox`). Do not
    use `HEAD`: it can be ahead of the last finished build.
 2. Range-read the zip directory and the `FILE` header of each shipped `.sym` (about 20 MB, about 35 s). The zip also
    holds test binaries, so intersect its modules with the binaries in the build's package (a release tarball for released versions, about
@@ -66,7 +67,9 @@ I confirmed on 2026-10-05 that it resolves to the build of `00a4d527` and that t
 3. Fetch that sha blobless (`git fetch --depth 1 --filter=blob:none origin <sha>`, about 17 MiB), then fetch only
    the referenced blobs with one `git fetch --filter=blob:none --stdin` (about 80 MB, about 45 s).
 4. Classify each path by extension and count lines.
-5. JS/CSS/HTML: take the file list from `chrome-map.json` of the same revision (or read a release `omni.ja`).
+5. JS/CSS/HTML: count the lines of the files inside `omni.ja` and `browser/omni.ja` of the same package (this works for releases
+   and for the weekly build; 1,001,575 + 980,367 JS lines for 157). `chrome-map.json` gives the source files instead, but only for
+   mozilla-central `linux64-ccov-opt` builds, not for releases.
 6. Assembly: `.asm` files do not appear in symbols (nasm objects carry no line info). Take them from moz.build
    evaluation with the downloaded `config.status`, or leave assembly out and say so.
 
@@ -279,7 +282,7 @@ block holds placeholders):
 {"v":157,"tag":"FIREFOX_157_0_RELEASE","sha":"fdd757a2e09c9471cddf383e64e631e4ce178499","date":"2026-09-24",
  "all":    {"rust":6172836,"c":5684104,"cpp":11190622,"h":1500000,"js":16229210,"html":6839860,"py":2159226,"java":147346,"asm":295963},
  "nontest":{"rust":5616315,"c":5509719,"cpp":10268555,"h":1400000,"js":2997940,"html":197874,"py":1281628,"java":137247,"asm":295548},
- "artifact":{"platform":"linux-x86_64","sha":"fdd757a2e09c9471cddf383e64e631e4ce178499","rust":0,"c":0,"cpp":0,"h":0,"js":0,"html":0,"py":0,"java":0,"asm":0}}
+ "artifact":{"source":"symbols","sha":"fdd757a2e09c9471cddf383e64e631e4ce178499","rust":0,"c":0,"cpp":0,"h":0,"js":0,"html":0,"py":0,"java":0,"asm":0}}
 ]}
 ```
 
@@ -294,7 +297,7 @@ block holds placeholders):
   extracted in time, see Suggested order). Until the collector exists, the page hides the browser-artifact option. The page must handle missing values in the middle of the series in all four views: in the preview only Language share
   does, and the other three assume gaps are at the start (stacks drop to zero, small multiples break the line, and the pie's
   "change against the previous release" would compute against nothing). Its `sha` records which commit
-  the file list was counted at. `platform` is only needed if more than one platform is ever stored (Open decision 1).
+  the file list was counted at. `source` says where the file list came from (symbols and build ids, or `candidates/`); a platform field is only needed if more than one platform is ever stored (Open decision 1).
 - **Headers (`h`) are stored raw** and split between C and C++ when the page is drawn, using a ratio kept as metadata in
   the file (`"header_split":{"c":0.185,"cpp":0.815}`). The current 2/3 to 1/3 split is out of date (by location about
   81.5% of headers are C++). Changing the ratio rewrites how past releases are displayed without recomputing anything, so
@@ -333,13 +336,13 @@ lines, so keep one release per line.
    `v: 125`, and say so in the record, so it is not fetched again every week. The majors-only file then has 112
    records (111 tagged majors plus 125).
 3. It computes the head point and merges everything into `build/data.json`.
-4. It commits the appended line to `main` directly (decided; branch protection on `main` was not checked, and a protected
-   branch would force a pull request instead). The workflow also runs on `pull_request` and on every push to `main`, so gate the commit
+4. It commits the appended line to `main` directly (decided; verified on 2026-10-05 that `main` has no branch protection and that the workflow token
+   default permission is `write`). The workflow also runs on `pull_request` and on every push to `main`, so gate the commit
    step like the Deploy step, put it in a `concurrency` group, and rebase before pushing so a push run and the cron run
    cannot race. A push made with the default token does not trigger another run, which is what we want here.
 
 The first run backfills the majors with the incremental method from the History section (about 8-9 minutes, about
-3.5 GB on a developer machine, with a memory peak of 8.9 GB; on a standard runner with 16 GB of RAM and about 14 GB of
+3.5 GB on a developer machine, with a memory peak of 8.9 GB for the first prototype and 2.7 GB for the streaming counter in `docs/reference/history/`; on a standard runner with 16 GB of RAM and about 14 GB of
 free disk next to the head checkout this is tight and has not been tried). After that, a normal week adds nothing except the head, and a release week adds one record.
 
 ### One counter

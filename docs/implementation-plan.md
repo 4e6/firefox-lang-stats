@@ -29,6 +29,11 @@ manual steps, and the browser-artifact series exists at least for the current re
    later releases follow every few weeks. If that date has passed, extract whatever is still available and record what
    was lost.
 3. Work in a git worktree on a branch off `main` (for example `feature/history`), never on `docs/shipped-code-research`.
+   That docs branch is local only (not pushed). Default: carry its commits onto the feature branch (`git cherry-pick` them
+   first) so that `docs/` lands with the first pull request; no separate docs pull request is needed.
+4. **Review convention.** GitHub does not let an author approve their own pull request. Default: a fresh reviewer's verdict is posted
+   as a pull-request comment that names the commit SHA it covered, and the merge condition is "green checks on that SHA plus an
+   approving comment on it". Any push after the approval needs a new review.
 
 ## Decisions
 
@@ -54,6 +59,8 @@ manual steps, and the browser-artifact series exists at least for the current re
 | Test/`third_party`/rest split | Not stored | No view needs it; `all` minus `nontest` gives test lines. Adding it later is one 8-12 minute recompute |
 | Headers | Store raw `h`; split 18.5% C and 81.5% C++ at display time from `header_split` in the file | By location about 81.5% of headers are C++ |
 | Legacy `data.json` fields | Keep `meta_date`, `title_date` and `lang` in the published `data.json`, filled from the new "all" view | Somebody may read the file; the numbers will shift (`.mjs` added, `mobile/` dropped) |
+| JavaScript, CSS, HTML in the artifact series | Count the lines of the files inside `omni.ja` and `browser/omni.ja` of the same package (`reference/symbols/omni_loc.py`: 1,001,575 + 980,367 JS lines for 157) | Needs no mapping to repository paths and works for releases and for the weekly build (`target.tar.xz`). `chrome-map.json` exists only for mozilla-central `linux64-ccov-opt` builds, not for releases. These are shipped lines (bundled, preprocessed), about 9% above the source lines |
+| Task 0 version set | Every point release in the range (about 45 versions: 131.0.2, 131.0.3, 132.0, 132.0.1 ... 143.x and 140.0esr to 140.3.1esr), oldest first | Cheap, and nothing is lost |
 | Assembly in the artifact series | Not covered (nasm objects carry no line info); write 0 and mention it on the page | Taking it from the build configuration is possible but not worth it yet |
 | d3 | Version 7.8.5 from cdnjs with a subresource-integrity hash | What the preview uses |
 | Language set | Rust, C, C++ (`.cc .cpp .cxx .hxx`), `h`, JavaScript (`.jsm .jsx .js .mjs`), HTML/CSS (`.htm .html .xhtml .xht .css`), Python, Java, Assembly (`.asm`) | The existing set plus `.mjs`. Kotlin, `.hpp`, `.hh`, `.mm`, `.S` stay out; changing the set is a `method_version` bump |
@@ -85,7 +92,7 @@ manual steps, and the browser-artifact series exists at least for the current re
 
 - `v` is the major release number (integer). `artifact` is `null` or the same nine keys plus `"sha"` (the commit its file
   list was counted at) and `"source"` (`"symbols"` with the symbol origin and build ids, or `"candidates"`).
-- `reference/history/history.py` writes exactly this shape, except `header_split` (add it) and `artifact` (always `null`).
+- `reference/history/history.py` writes exactly this shape (key order inside a record is `rust, c, h, cpp, ...`, which does not matter), except `header_split` (add it) and `artifact` (always `null`).
 - Totals are not stored; the page sums the language columns. Test lines are `all` minus `nontest`.
 
 ### `build/data.json` (deployed; what the page loads)
@@ -104,7 +111,10 @@ Do the tasks in this order. Each ends with checks; do not start the next before 
 
 ### Task 0: symbol file lists for the expiring releases (time-critical, independent)
 
-Goal: for each of 131.0.2, 131.0.3, 132.0 to 143.0 and 140.0esr to 140.3.1esr, commit `data/artifact-files/<version>.txt`.
+Goal: for every release in the expiring range, commit `data/artifact-files/<version>.txt`. Take the release list from
+`https://archive.mozilla.org/pub/firefox/releases/` (131.0.2 up to the last 143.x, including point releases such as 132.0.1, plus 140.0esr
+to 140.3.1esr); about 45 versions. Work from the oldest, because it expires first. The release tarball is `.tar.bz2` for 131.0.2 and `.tar.xz` for later
+ones; try both.
 
 1. Write `dev/artifact-files` (Python, stdlib only) that implements the seven steps in `reference/symbols/README.md`, reusing
    the logic of `rzip.py`, `tecken.py` and `buildid.py`. It must work for every module in the release tarball, not only
@@ -113,9 +123,13 @@ Goal: for each of 131.0.2, 131.0.3, 132.0 to 143.0 and 140.0esr to 140.3.1esr, c
    number of paths, modules read, modules skipped (404), and the symbol-server debug id of `libxul.so`.
 3. Branch, commit, open a pull request. It is independent of everything else and can merge first.
 
+Do not reuse `rzip.py` as-is for the `libxul.so` choice (it takes the first entry) and read `tecken.py`'s header: the symbol server
+needs `Accept-Encoding: gzip` on range requests, otherwise it answers 200 with the whole 723 MB decompressed file. The point-release and
+ESR git tags are not fetched by `backfill.sh`; fetch them before running `checkpaths.py` (its header says how).
+
 Checks: every path exists in the git tree of the release tag (`reference/symbols/checkpaths.py`; the earlier run found 0 missing
-for 135.0 and 143.0 after dropping toolchain headers and `obj-*` paths); 15,000-21,000 paths per release; `libxul.so`'s file
-list contains the same shipped binaries as the release tarball (about 28 ELF files for 135.0). If a release's symbols are already gone, skip it and note it in the README.
+for 135.0 and 143.0 after dropping toolchain headers and `obj-*` paths); 15,000-21,000 paths per release; the modules read are the shipped
+binaries of the release tarball (about 28 ELF files for 135.0; three of them, `glxtest`, `vaapitest` and `crashreporter`, are not on the symbol server). If a release's symbols are already gone, skip it and note it in the README.
 
 ### Task 1: counter, tests and the backfill
 
@@ -124,8 +138,12 @@ Goal: `data/history.json` with all major releases, produced by a counter that th
 1. Move `reference/history/history.py` to `dev/history.py` and finish it. It already streams per release (no memory
    peak). Add: the `header_split` field; `--exclude mobile/` as the default; a `count_release(repo, tag)` function that
    works on a single release in any clone (blobless or depth 1), used by both the backfill and the weekly append; a
-   `head` subcommand that counts `HEAD` of a normal checkout; and an `append` subcommand that adds missing majors to an
-   existing file (comparing by `v`, fetching each missing tag with `git fetch --depth 1 origin tag <tag>`).
+   `head` subcommand that counts `HEAD` of a normal checkout; an `append` subcommand that adds missing majors to an
+   existing file; and a `build-site` subcommand that merges `data/history.json` with the head and the legacy fields into
+   `build/data.json`. `append` must not call `releases()` on the workflow's depth-1 checkout (it has no tags): list the remote tags with
+   `git ls-remote --tags origin`, compare with the file by `v`, and fetch each missing tag with `git fetch --depth 1 origin tag <tag>`.
+   Make `--exclude` default to `mobile/` and add `--no-exclude` for the comparison run below (with argparse `action='append'` a default
+   list is extended, not replaced, and `--exclude ''` would exclude everything).
 2. Add `dev/test_history.py` (`unittest`, no network): build a throwaway git repository with a few files of each language,
    test directories and a `mobile/` directory, tag it, and assert the counts for `all` and `nontest`, the `--exclude`
    handling, the 125 fallback tag rule, and `is_test` on a table of paths taken from `reference/test-paths/README.md`.
@@ -143,10 +161,12 @@ Goal: the existing workflow appends new releases, computes the head, builds `bui
 Change `.github/workflows/deploy.yml`:
 
 ```yaml
+# workflow level
 permissions:
   contents: write
+# job level (inside jobs.deploy)
 concurrency:
-  group: history-and-pages
+  group: history-${{ github.ref }}           # per ref, so pull-request runs never cancel a pending run on main
   cancel-in-progress: false
 steps:
   - uses: actions/checkout@v6
@@ -167,24 +187,32 @@ steps:
   - uses: JamesIves/github-pages-deploy-action@v4   # unchanged, still only on main
 ```
 
+**Ship Tasks 2 and 3 in one pull request.** The deploy action cleans `gh-pages` (`clean` defaults to true), and the sketch above does not
+render an `index.html`; deploying it before the new page exists would remove the live page. If they must be separate, keep the existing `index.mustache`
+steps until Task 3 lands.
+
 Notes: the commit step must run before the deploy step and only on `main`; a push made with the default token does not
 start another run; pull-request runs compute everything but neither commit nor deploy. Remove `npm install -g mustache`
 and `index.mustache` once the new page exists.
 
 Checks: a pull-request run succeeds and uploads nothing; a manual run on `main` (use `workflow_dispatch`, add it)
-appends nothing when history is current and adds exactly one line when a release is missing (test by deleting the last line
-locally); two overlapping runs do not fail (concurrency group).
+appends nothing when history is current; adds exactly one line when a release is missing (test this locally by deleting the last line of
+`data/history.json` and running the `append` step, never by committing a deletion to `main`); two overlapping runs do not fail (concurrency group).
 
 ### Task 3: the page
 
 Goal: replace `index.mustache` with a static page that fetches `data.json`.
 
 1. Start from `reference/preview/history-designs.html`; follow "Changes needed before it can ship" in
-   `reference/preview/README.md`. Keep the existing page's meta tags, favicon and "Fork me" ribbon (`index.mustache`),
-   the title "How much Rust in Firefox?" and the date line.
+   `reference/preview/README.md`. Put the page at `site/index.html` and have the workflow copy `site/` into `build/`. Keep the existing
+   page's meta tags, the title "How much Rust in Firefox?" and the date line. The old page's assets are broken on the live site: the
+   "Fork me" ribbon image (`s3.amazonaws.com/github/ribbons/...`) returns 403, and the favicon and `og:image`
+   (`rustacean-orig-noshadow.ico` and `.png`) are in the repository root but are not deployed because `gh-pages` holds only `build/`. Copy those two
+   files into `build/` and replace the ribbon with a plain link or an inline SVG.
 2. Build the display data from `data.json`: apply `header_split`, add `Other`-free language list, derive totals, shares and
    deltas, and treat `artifact: null` and mid-series `null` values as gaps in all four views.
-3. Order the views Composition, Small multiples, Language share, Pie + scrubber; default view "Non-test files", default
+3. Order the views Composition, Small multiples, Language share, Pie + scrubber, and open on Composition (the preview opens on Language share);
+   remove the preview's "Five ways" lede and per-tab explanations; default view "Non-test files", default
    scale "Share", default language Rust, default release the newest.
 4. Check it in a browser at desktop and phone width, in light and dark themes, with the real data.
 
@@ -202,10 +230,10 @@ Update `README.md` (how the data is built, where it lives, how to rerun the back
 Goal: `artifact` filled for the newest release and appended every week.
 
 Implement the "Proposed weekly job" in the research document: resolve `gecko.v2.mozilla-central.latest.firefox.linux64-opt`
-to the build and its git sha; range-read the symbols zip (`target.crashreporter-symbols.zip`) for the shipped modules;
+to the build and its git sha (the task's routes contain two 40-hex revisions, an hg one and a git one: use the one that exists in
+`mozilla-firefox/firefox`, or the sha in the `git:` FILE records); range-read the symbols zip (`target.crashreporter-symbols.zip`) for the shipped modules;
 intersect with the binaries in the same build's `target.tar.xz`; pick the non-gtest `libxul.so`; keep repository paths; fetch that
-sha and count lines of those files with the same counter; JavaScript, CSS and HTML from `chrome-map.json` of the
-`linux64-ccov-opt` build for the same revision; assembly left at 0 and noted. Fall back to "no artifact point this week" if any artifact is missing; never
+sha and count lines of those files with the same counter; JavaScript, CSS and HTML counted inside `omni.ja` and `browser/omni.ja` of the same `target.tar.xz` (`reference/symbols/omni_loc.py`); assembly left at 0 and noted. Fall back to "no artifact point this week" if any artifact is missing; never
 fail the whole job. The artifact is a property of a release, so for a new release it is computed once and stored; for the head it is
 recomputed each run.
 
@@ -261,6 +289,8 @@ Not verified: the weekly append and head steps (no code yet), a run on a GitHub 
   APIs. Every step that uses them must fail soft.
 - **Idempotency.** Rebuilding `history.json` from scratch must give the same file apart from newly released versions.
   Compare the regenerated file with the committed one in review whenever `method_version` changes.
+- **Open pull request #12** (abitrolly, "Collect file extension stats in `gh-pages`") changes `deploy.yml`, `dev/build-data`, `README.md` and adds `01stats.sh`;
+  it overlaps this work. Read it before Task 2 and decide, with the owner, whether it is superseded.
 - **Do not build Firefox in CI.**
 
 ## Definition of done

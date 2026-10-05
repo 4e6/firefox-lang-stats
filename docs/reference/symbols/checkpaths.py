@@ -1,6 +1,9 @@
 # For each version, check that the repo paths named in a saved .sym FILE header (sym_<version>.txt, written by
 # rzip.py or tecken.py) exist in the git tree of that release's tag, and that the hg revision in the records is the
-# tag's hg node. usage: FIREFOX_REPO=/path/to/blobless-clone python3 checkpaths.py 135.0 143.0 ...
+# tag's hg node. usage: FIREFOX_REPO=/path/to/blobless-clone python3 checkpaths.py 135.0 143.0 131.0.2 140.3.1esr ...
+# The clone must have the release tag of every version checked, including point releases and ESR, e.g.:
+#   git -C $FIREFOX_REPO fetch --filter=blob:none origin '+refs/tags/FIREFOX_*_RELEASE:refs/tags/FIREFOX_*_RELEASE'
+# (history/backfill.sh fetches only the major releases.) A missing tag is reported, never replaced by another tag.
 import re, subprocess, sys, collections, json, urllib.request
 import os
 G=os.environ['FIREFOX_REPO']   # blobless clone with the release tags fetched (see history/backfill.sh)
@@ -9,7 +12,7 @@ def tag(v):
     return 'FIREFOX_'+v.replace('.','_')+'_RELEASE'
 for v in sys.argv[1:]:
     t=tag(v); c=tags.get(t)
-    if c is None: t='FIREFOX_47_0_1_RELEASE'; c=tags[t]
+    if c is None: print(v,'no tag',t,'in',G,'- fetch it first (see header)'); continue
     objn=[0]; paths=set(); revs=collections.Counter(); repo=None
     for l in open(f'sym_{v}.txt'):
         if not l.startswith('FILE'): continue

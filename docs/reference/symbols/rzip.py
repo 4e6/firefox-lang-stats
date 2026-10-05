@@ -1,3 +1,7 @@
+# Reads a remote .zip (crashreporter-symbols.zip) with range requests. usage: rzip.py URL [module] [out.txt]
+# NOTE: the zip can hold several entries for the same module (two real libxul.so builds, shipped and gtest, plus test
+# modules). The `want` lookup below takes the FIRST match in zip order, which is arbitrary: do not reuse as-is for counting.
+# Choose the entry whose build id equals the one of the binary in the release tarball (see buildid.py).
 import sys, struct, zlib, urllib.request, json, time, re
 BYTES=0; REQS=0
 def get(url, start, end):

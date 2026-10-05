@@ -6,7 +6,8 @@ step 0 of `../../implementation-plan.md`. These scripts are the parts, each run 
 | File | What it does |
 |---|---|
 | `rzip.py URL [module] [out]` | Reads a remote `.zip` (the `crashreporter-symbols.zip` on `archive.mozilla.org`) with HTTP range requests: central directory, then only the head of one `.sym` entry (`MODULE`, `INFO`, `FILE` records). About 1 MB per module for releases up to 105, 2 MB or more for later ones |
-| `tecken.py URL [out]` | Same for the symbol server (`https://symbols.mozilla.org/<module>/<debug id>/<module>.sym`, gzip with range support) |
+| `tecken.py URL [out]` | Same for the symbol server (`https://symbols.mozilla.org/<module>/<debug id>/<module>.sym`, gzip with range support). **Needs `Accept-Encoding: gzip`**: without it the server answers 200 with the whole file decompressed (723 MB for libxul), and the script sets it. Verified live: 18,986 FILE records for 131.0.2 in 2 MB and 1.2 s |
+| `omni_loc.py DIR...` | Counts files and lines by type in extracted `omni.ja` directories: the shipped JavaScript, CSS and HTML |
 | `buildid.py TARBALL_URL` | Streams a release tarball until `libxul.so` and prints its ELF build id and the symbol-server debug id (GUID byte swap plus a trailing `0`). Costs 0.5-32 MB depending on where `libxul.so` sits in the tar. Only handles `libxul.so`; the other modules need the same logic |
 | `survey.sh VERSION` | Lists which `candidates/` builds of a version have a symbols zip, with sizes |
 | `checkpaths.py VERSION...` | Checks that the repo paths named in saved `.sym` headers exist in the git tree of the release tag, and that the hg revision matches the tag |

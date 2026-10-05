@@ -1,7 +1,11 @@
+# Reads the FILE header of a .sym on the symbol server without downloading the file (about 2 MB for libxul.so).
+# usage: tecken.py https://symbols.mozilla.org/libxul.so/<DEBUG_ID>/libxul.so.sym [out.txt]
+# IMPORTANT: the Accept-Encoding: gzip header is required. Without it the CDN ignores Range and answers 200 with the whole
+# file already decompressed (723 MB for libxul.so of 131.0.2); with it the answer is 206 and gzip-compressed.
 import sys, zlib, urllib.request, collections, re, time
 url = sys.argv[1]; t=time.time(); pos=0; chunk=2<<20; d=zlib.decompressobj(31); buf=b''; lines=[]; n=0; done=False
 while not done:
-    r = urllib.request.Request(url, headers={'Range': f'bytes={pos}-{pos+chunk-1}'})
+    r = urllib.request.Request(url, headers={'Accept-Encoding': 'gzip', 'Range': f'bytes={pos}-{pos+chunk-1}'})
     c = urllib.request.urlopen(r, timeout=120).read(); n += len(c); pos += len(c)
     buf += d.decompress(c); *full, buf = buf.split(b'\n')
     for l in full:

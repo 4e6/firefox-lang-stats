@@ -1,6 +1,6 @@
 # Test-path exclusion
 
-"Non-test" means: not under a test path. The rules were derived from the Firefox tree (see "Test-path rules" in
+"Non-test" means: not under a test path. The rules were derived from the Firefox tree (see "Why the current chart overstates things" and "Related fixes the script needs regardless" in
 `../../shipped-code-research.md`) and exist in two forms that agree to about 0.1 point at Firefox 157 (Rust 21.35% with the
 Python rules on the release tag, 21.4-21.45% with the pathspecs on `main`; different commits, so not an exact match).
 

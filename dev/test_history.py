@@ -37,6 +37,7 @@ FILES = [
     ('browser/t.xht', 1, 'html', False),
     ('python/tool.py', 2, 'py', False),
     ('browser/J.java', 1, 'java', False),
+    ('browser/Foo.kt', 4, 'kt', False),
     ('media/x.asm', 2, 'asm', False),
     ('browser/tests/t.rs', 5, 'rust', True),
     ('browser/tests/t.cpp', 6, 'cpp', True),
@@ -47,13 +48,19 @@ FILES = [
     ('mobile/android/M.java', 100, 'java', False),
     ('mobile/android/m.rs', 50, 'rust', False),
     ('mobile/android/tests/T.java', 20, 'java', True),
+    ('mobile/android/K.kt', 40, 'kt', False),
+    ('mobile/android/tests/KT.kt', 13, 'kt', True),
+    ('toolkit/tests/U.kt', 6, 'kt', True),
     ('mobilex/keep.rs', 11, 'rust', False),  # "mobile/" is a directory prefix, not a name prefix
-    # not counted: other extensions, upper-case extensions
+    # not counted: other extensions (Kotlin scripts .kts too), upper-case extensions
     ('README.md', 4, None, False),
     ('browser/foo.hpp', 4, None, False),
+    ('browser/foo.hh', 4, None, False),
+    ('browser/foo.mm', 4, None, False),
     ('browser/foo.S', 4, None, False),
-    ('browser/Foo.kt', 4, None, False),
+    ('mobile/android/build.gradle.kts', 4, None, False),
     ('browser/X.RS', 4, None, False),
+    ('browser/Y.KT', 4, None, False),
 ]
 # a file without a final newline counts like `wc -l`: newlines only
 NO_NEWLINE = ('browser/nonl.js', 'a\nb', 'js', False)
@@ -278,10 +285,13 @@ class CountTest(GitTestCase):
         self.assertEqual(r['browser']['rust'], 14)
         self.assertEqual(r['all']['java'], 1 + 100 + 20)   # mobile/ is in "all", its tests too
         self.assertEqual(r['browser']['java'], 1)
+        # Kotlin (v3): counted in both views; mobile/ Kotlin and Kotlin tests only in "all"; .kts never
+        self.assertEqual(r['all']['kt'], 4 + 40 + 13 + 6)
+        self.assertEqual(r['browser']['kt'], 4)
         self.assertEqual(r['all']['js'], 2 + 3 + 1 + 1 + 9 + 1)  # .mjs counted, no-newline file counts 1
         self.assertEqual(r['browser']['js'], 2 + 3 + 1 + 1 + 1)
         self.assertEqual(list(r), ['sha', 'date', 'all', 'browser'])
-        self.assertEqual(list(r['all']), ['rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'asm'])
+        self.assertEqual(list(r['all']), ['rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'kt', 'asm'])
         self.assertEqual(list(r['browser']), list(r['all']))
         self.assertEqual(r['date'], '2016-04-26')
         self.assertEqual(r['sha'], git(self.up, 'rev-parse', 'FIREFOX_46_0_RELEASE^{commit}'))
@@ -292,6 +302,7 @@ class CountTest(GitTestCase):
         self.assertEqual((r['all'], r['browser']), expected(self.c1_files, ()))
         self.assertEqual(r['all'], default['all'])
         self.assertEqual(r['browser']['java'], 101)  # mobile/ non-test code is browser code without the prefix
+        self.assertEqual(r['browser']['kt'], 4 + 40)
         r = history.count_release(self.up, 'FIREFOX_46_0_RELEASE', ('media/', 'browser/tests/'))
         self.assertEqual((r['all'], r['browser']), expected(self.c1_files, ('media/', 'browser/tests/')))
         self.assertEqual(r['all'], default['all'])
@@ -320,6 +331,7 @@ class HeadCliTest(GitTestCase):
         r = self.head()
         self.assertEqual(list(r), ['sha', 'date', 'all', 'browser'])
         self.assertEqual((r['all']['java'], r['browser']['java']), (121, 1))
+        self.assertEqual((r['all']['kt'], r['browser']['kt']), (63, 4))
         self.assertEqual(r['sha'], git(self.up, 'rev-parse', 'HEAD'))
         self.assertEqual(r, history.count_release(self.up, 'HEAD'))
 
@@ -339,7 +351,7 @@ class HeadCliTest(GitTestCase):
 class BackfillTest(GitTestCase):
     def test_file_shape(self):
         lines = self.full_bytes.decode().split('\n')
-        self.assertEqual(lines[0], '{"method_version":2,"browser_excluded_prefixes":["mobile/"],'
+        self.assertEqual(lines[0], '{"method_version":3,"browser_excluded_prefixes":["mobile/"],'
                                    '"header_split":{"c":0.185,"cpp":0.815},"releases":[')
         self.assertEqual(lines[-2:], [']}', ''])
         recs = [json.loads(line.rstrip(',')) for line in lines[1:-2]]
@@ -347,6 +359,9 @@ class BackfillTest(GitTestCase):
                          [(46, 'FIREFOX_46_0_RELEASE'), (47, 'FIREFOX_47_0_BUILD1'), (48, 'FIREFOX_48_0_RELEASE')])
         for r in recs:
             self.assertEqual(list(r), ['v', 'tag', 'sha', 'date', 'all', 'browser'])
+            self.assertEqual(list(r['all']), history.KEYS)
+            self.assertEqual(list(r['browser']), history.KEYS)
+            self.assertEqual((r['all']['kt'], r['browser']['kt']), (63, 4))
         self.assertNotIn(b'artifact', self.full_bytes)
         self.assertNotIn(b'nontest', self.full_bytes)
         data = json.loads(self.full_bytes)
@@ -454,8 +469,12 @@ class AppendTest(GitTestCase):
         v1 = {'method_version': 1, 'excluded_prefixes': ['mobile/'], 'header_split': meta['header_split']}
         old = [dict({k: v for k, v in r.items() if k != 'browser'}, nontest=r['browser'], artifact=None)
                for r in recs[:1]]
+        # a v2 file: the same layout without the kt key
+        v2 = [dict(r, **{view: {k: n for k, n in r[view].items() if k != 'kt'} for view in ('all', 'browser')})
+              for r in recs[:1]]
         cases = [('v1', history.format_history(v1, old)),
-                 ('v3', history.format_history(dict(meta, method_version=3), recs[:1])),
+                 ('v2', history.format_history(dict(meta, method_version=2), v2)),
+                 ('v4', history.format_history(dict(meta, method_version=4), recs[:1])),
                  ('none', history.format_history({k: v for k, v in meta.items() if k != 'method_version'}, recs[:1]))]
         for name, text in cases:
             path = os.path.join(self.mkdtemp(), 'history.json')
@@ -580,9 +599,11 @@ class BuildSiteTest(GitTestCase):
         self.assertEqual(data['releases'], hist['releases'])
         for k in ('method_version', 'browser_excluded_prefixes', 'header_split'):
             self.assertEqual(data[k], hist[k])
-        self.assertEqual((data['method_version'], data['browser_excluded_prefixes']), (2, ['mobile/']))
+        self.assertEqual((data['method_version'], data['browser_excluded_prefixes']), (3, ['mobile/']))
         head = data['head']
         self.assertEqual(list(head), ['sha', 'date', 'all', 'browser'])
+        self.assertEqual(list(head['all']), ['rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'kt', 'asm'])
+        self.assertEqual(list(head['browser']), list(head['all']))
         self.assertEqual(head['sha'], git(self.up, 'rev-parse', 'HEAD'))
         self.assertEqual(head, history.count_release(self.up, 'HEAD'))
         self.assertEqual(head['date'], '2024-06-10')
@@ -592,11 +613,13 @@ class BuildSiteTest(GitTestCase):
             {'name': 'Rust', 'loc': a['rust']}, {'name': 'C', 'loc': a['c'] + hc},
             {'name': 'C++', 'loc': a['cpp'] + a['h'] - hc}, {'name': 'JavaScript', 'loc': a['js']},
             {'name': 'HTML', 'loc': a['html']}, {'name': 'Python', 'loc': a['py']},
-            {'name': 'Java', 'loc': a['java']}, {'name': 'Assembly', 'loc': a['asm']}])
+            {'name': 'Java', 'loc': a['java']}, {'name': 'Kotlin', 'loc': a['kt']},
+            {'name': 'Assembly', 'loc': a['asm']}])
         self.assertEqual(sum(x['loc'] for x in data['lang']), sum(a.values()))
         self.assertEqual(a['h'], 10)
         # the pie is "all", so mobile/ is in it: Java 1 + 100 + 20, Rust 73 + 27 + 20 + 5 (browser/later.rs)
         self.assertEqual((data['lang'][6]['loc'], data['lang'][0]['loc']), (121, 125))
+        self.assertEqual(data['lang'][7], {'name': 'Kotlin', 'loc': 4 + 40 + 13 + 6})   # mobile/ is in the pie
         self.assertEqual((data['lang'][1]['loc'], data['lang'][2]['loc']), (2 + 2, 13 + 10 - 2))
 
     def test_cli_uses_current_time(self):
@@ -608,7 +631,7 @@ class BuildSiteTest(GitTestCase):
         now = datetime.now(timezone.utc)
         self.assertTrue(data['meta_date'].endswith('+00:00'))
         self.assertLess(abs((datetime.fromisoformat(data['meta_date']) - now).total_seconds()), 300)
-        self.assertEqual(len(data['lang']), 8)
+        self.assertEqual(len(data['lang']), 9)
 
 
 if __name__ == '__main__':

@@ -62,10 +62,13 @@ jobs:
           site = json.load(open('build/data.json'))
           hist = json.load(open('data/history.json'))
           assert site['releases'] == hist['releases'], 'releases differ from data/history.json'
-          assert site['method_version'] == hist['method_version'] == 2, 'method_version is not 2'
+          assert site['method_version'] == hist['method_version'] == 3, 'method_version is not 3'
           assert site['browser_excluded_prefixes'] == hist['browser_excluded_prefixes'], 'browser_excluded_prefixes differ'
           assert sorted(site['head']) == ['all', 'browser', 'date', 'sha'], 'head keys: %s' % sorted(site['head'])
           assert all(sorted(r) == ['all', 'browser', 'date', 'sha', 'tag', 'v'] for r in site['releases']), 'release keys'
+          keys = ['rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'kt', 'asm']
+          assert all(list(r[view]) == keys for r in site['releases'] + [site['head']] for view in ('all', 'browser')), 'language keys'
+          assert [x['name'] for x in site['lang']] == ['Rust', 'C', 'C++', 'JavaScript', 'HTML', 'Python', 'Java', 'Kotlin', 'Assembly'], 'lang names'
           assert site['head']['sha'] and sum(site['head']['all'].values()) > 0, 'no head point'
           assert sum(site['head']['browser'].values()) > 0, 'empty head browser view'
           print('build/: %d releases, head %s (%s)' % (len(site['releases']), site['head']['sha'][:12], site['head']['date']))

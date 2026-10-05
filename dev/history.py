@@ -16,7 +16,7 @@ Subcommands:
                            write DIR/data.json: the history, the head point of R and the legacy fields of the old
                            pie chart (meta_date, title_date, lang)
 
-Two views of every commit (METHOD_VERSION 2):
+Two views of every commit (METHOD_VERSION 3):
   "all"      every tracked file whose extension is in the language set, no exclusions (mobile/ included)
   "browser"  "all" minus the paths under a prefix of `browser_excluded_prefixes` (mobile/) and minus test paths
              (see is_test())
@@ -29,8 +29,8 @@ has only BUILD tags (still in the release process) is not added until its _RELEA
 
 Languages (by extension; C/C++ headers are kept apart as `h` and split at display time with `header_split`):
 rust .rs | c .c | cpp .cc .cpp .cxx .hxx | h .h | js .jsm .jsx .js .mjs | html .htm .html .xhtml .xht .css |
-py .py | java .java | asm .asm. Changing the set, the test rules or the views means bumping METHOD_VERSION and
-regenerating.
+py .py | java .java | kt .kt | asm .asm. Changing the set, the test rules or the views means bumping METHOD_VERSION
+and regenerating (v3 added kt to v2).
 
 How to regenerate data/history.json from scratch (about 10 minutes and 3.5 GB of disk; run it locally, not in CI):
 
@@ -65,7 +65,7 @@ import threading
 import time
 from datetime import datetime, timezone
 
-METHOD_VERSION = 2
+METHOD_VERSION = 3
 FIRST_MAJOR = 46
 # path prefixes left out of the "browser" view (never out of "all")
 BROWSER_EXCLUDED_PREFIXES = ('mobile/',)
@@ -76,7 +76,7 @@ HEADER_SPLIT = {'c': 0.185, 'cpp': 0.815}
 LANGS = [
     ('rust', ('.rs',)), ('c', ('.c',)), ('cpp', ('.cc', '.cpp', '.cxx', '.hxx')), ('h', ('.h',)),
     ('js', ('.jsm', '.jsx', '.js', '.mjs')), ('html', ('.htm', '.html', '.xhtml', '.xht', '.css')),
-    ('py', ('.py',)), ('java', ('.java',)), ('asm', ('.asm',)),
+    ('py', ('.py',)), ('java', ('.java',)), ('kt', ('.kt',)), ('asm', ('.asm',)),
 ]
 EXT2LANG = {e: k for k, es in LANGS for e in es}
 KEYS = [k for k, _ in LANGS]
@@ -84,7 +84,7 @@ EXT_RE = re.compile(r'(\.[A-Za-z0-9]+)$')
 
 # name and key of each slice of the old pie chart, in the order of the deployed data.json
 LEGACY_LANG = [('Rust', 'rust'), ('C', 'c'), ('C++', 'cpp'), ('JavaScript', 'js'), ('HTML', 'html'),
-               ('Python', 'py'), ('Java', 'java'), ('Assembly', 'asm')]
+               ('Python', 'py'), ('Java', 'java'), ('Kotlin', 'kt'), ('Assembly', 'asm')]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 # directory names that mark test code (any path component); the rules are described in docs/methodology.md

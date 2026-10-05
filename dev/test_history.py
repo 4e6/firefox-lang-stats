@@ -477,6 +477,23 @@ class ZeroDateTest(GitTestCase):
         self.assertIn('error: commit', err.getvalue())
         self.assertNotIn('Traceback', err.getvalue())
 
+    def test_append_deepens_a_zero_timestamp_tag(self):
+        up = self.repo()
+        d = self.mkdtemp()
+        git(d, 'clone', '-q', '--depth', '1', '--no-tags', 'file://' + up, 'c')
+        clone = os.path.join(d, 'c')
+        self.assertEqual(git(clone, 'rev-list', '--count', 'HEAD'), '1')
+        path = os.path.join(d, 'history.json')
+        prev = dict(v=122, tag='FIREFOX_122_0_RELEASE', **history.count_release(up, 'HEAD~1'))
+        with open(path, 'w') as f:
+            f.write(history.format_history(history.default_meta(history.DEFAULT_EXCLUDES), [prev]))
+        with quiet():
+            self.assertEqual(history.append(path, clone), 1)
+        rec = history.read_history(path)[1][-1]
+        self.assertEqual((rec['v'], rec['tag'], rec['date']), (123, 'FIREFOX_123_0_RELEASE', '2024-02-13'))
+        self.assertEqual(rec['sha'], git(up, 'rev-parse', 'HEAD'))
+        self.assertEqual(rec['all']['rust'], 3)
+
 
 class ErrorMessageTest(GitTestCase):
     def test_head_on_empty_repo(self):

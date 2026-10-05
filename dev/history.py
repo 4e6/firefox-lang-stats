@@ -44,7 +44,8 @@ compare it with the committed file whenever METHOD_VERSION changes. The weekly j
 
 `date` is the committer date of the counted commit. A few converted commits carry a zero timestamp (1970-01-01;
 FIREFOX_123_0_RELEASE is one); for those the date of the nearest first-parent ancestor with a real timestamp is stored,
-and counting fails rather than store 1970 when no such ancestor is present (a depth-1 clone).
+and counting fails rather than store 1970 when no such ancestor is present (a depth-1 clone). `append` handles that
+case by fetching 10 more commits of the tag (`git fetch --deepen 10`) and counting again.
 
 Requires git 2.44 or newer for `backfill` on a partial clone (GIT_NO_LAZY_FETCH); older git still gives correct
 counts but fetches missing blobs one at a time, which takes hours.
@@ -100,6 +101,10 @@ def no_lazy_fetch():
 
 class HistoryError(RuntimeError):
     """A failure with a message meant for the user (printed without a traceback by the command line)."""
+
+
+class ZeroTimestampError(HistoryError):
+    """A commit has a zero timestamp and no dated first-parent ancestor is present (shallow clone)."""
 
 
 def log(msg):
@@ -281,8 +286,8 @@ def commit_date(repo, sha, limit=100):
         ct, cs = line.split()
         if int(ct) != 0:
             return cs
-    raise HistoryError('commit %s has a zero timestamp and none of its first %d first-parent ancestors present in %s '
-                       'has a real one; fetch more history (e.g. git fetch --deepen 10)' % (sha, limit, repo))
+    raise ZeroTimestampError('commit %s has a zero timestamp and none of its first %d first-parent ancestors present '
+                             'in %s has a real one; fetch more history (e.g. git fetch --deepen 10)' % (sha, limit, repo))
 
 
 def count_release(repo, rev, excludes=DEFAULT_EXCLUDES, cache=None, fetch=True):
@@ -420,7 +425,15 @@ def append(history, repo, remote='origin'):
     for v, tag in todo:
         t0 = time.time()
         git(repo, 'fetch', '-q', '--no-tags', '--depth', '1', remote, 'tag', tag)
-        records.append(release_record(v, tag, count_release(repo, tag, excludes, cache)))
+        try:
+            counted = count_release(repo, tag, excludes, cache)
+        except ZeroTimestampError:
+            # the tagged commit has a zero timestamp (like 123): fetch a few parents for the date and count again
+            # (the blobs are cached, so the second count only lists the tree)
+            log('%s has a zero timestamp; fetching 10 more commits for its date' % tag)
+            git(repo, 'fetch', '-q', '--no-tags', '--deepen', '10', remote, 'tag', tag)
+            counted = count_release(repo, tag, excludes, cache)
+        records.append(release_record(v, tag, counted))
         write_atomic(history, format_history(meta, records))
         log('added %d (%s), %.0fs' % (v, tag, time.time() - t0))
     return len(todo)

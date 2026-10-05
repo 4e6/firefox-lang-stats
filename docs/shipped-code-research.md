@@ -10,6 +10,9 @@ without building Firefox on a CI runner?
 
 ## Decision
 
+See `implementation-plan.md` for the work breakdown, defaults and acceptance checks, and `reference/` for the prototype
+code, measured data and the design preview this document refers to.
+
 Use **Mozilla's own CI build outputs** to learn which source files ship, then count lines of exactly those files
 at the same commit. We do not build Firefox ourselves. The shipped-code series is added **next to** the existing
 series, not in place of it.
@@ -282,7 +285,7 @@ block holds placeholders):
 
 - **Scope:** `all` and `nontest` should exclude `mobile/`, matching the desktop-only decision. The preview and the
   measured series so far include it (Java is 147k lines at 157, against about 56k outside `mobile/`), so the first
-  backfill must apply the exclusion; Rust is 12.7% / 21.4% with it and 12.8% / 21.5% without it. Java and Assembly stay
+  backfill must apply the exclusion; at the 157 tag Rust is 12.67% / 21.35% with it and 12.71% / 21.45% without it. Java and Assembly stay
   separate columns because the views show them separately, even though Java is small without `mobile/`.
 - **Languages:** Rust, C, C++, JavaScript (including `.mjs`), HTML/CSS, Python, Java and Assembly. Java and Assembly are
   separate columns because the views show them separately.

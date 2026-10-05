@@ -7,7 +7,7 @@ and `.github/workflows/deploy.yml`). Figures measured for this document are at r
 
 ## In short
 
-The page counts **lines in files**, grouped into eight languages by file extension, for every major Firefox release
+The page counts **lines in files**, grouped into ten languages by file extension, for every major Firefox release
 from 46 to the newest one and for the current head of the default branch of
 [mozilla-firefox/firefox](https://github.com/mozilla-firefox/firefox). It offers two views of the same releases:
 
@@ -18,27 +18,32 @@ from 46 to the newest one and for the current head of the default branch of
 
 A release without data in a view is drawn as a gap, never as zero.
 
+The charts combine two pairs of languages: **JavaScript and TypeScript as one series, JavaScript/TypeScript**, and
+**Java and Kotlin as one series, Java/Kotlin**, so they show eight series for the ten languages: the page has eight
+series colours and does not add more. The data keeps each pair apart (`js` and `ts`, `java` and `kt`), and the
+page's tooltips (and its tables, in Lines mode) give the split.
+
 Firefox 157 in Browser files, headers split as described below:
 
 | Language | Lines | Share |
 |---|---:|---:|
-| C++ | 10,987,092 | 42.0% |
-| Rust | 5,616,315 | 21.4% |
-| C | 4,788,840 | 18.3% |
-| JavaScript | 2,973,279 | 11.4% |
+| C++ | 11,702,041 | 42.7% |
+| Rust | 5,616,315 | 20.5% |
+| C | 4,788,840 | 17.5% |
+| JavaScript/TypeScript (JavaScript 2,973,279, TypeScript 173,155) | 3,146,434 | 11.5% |
 | HTML/CSS | 195,821 | 0.7% |
-| Python | 1,275,464 | 4.9% |
-| Java | 55,497 | 0.2% |
-| Assembly | 295,548 | 1.1% |
-| **Total** | **26,187,856** | **100%** |
+| Python | 1,275,464 | 4.7% |
+| Java/Kotlin (Java 55,497, Kotlin 72,324) | 127,821 | 0.5% |
+| Assembly | 531,363 | 1.9% |
+| **Total** | **27,384,099** | **100%** |
 
-C and C++ include their share of the `.h` lines (fractional lines are rounded here). The Rust share is 21.45% before
-rounding.
+C and C++ include their share of the `.h` lines (fractional lines are rounded here). The Rust share is 20.51% before
+rounding. In All files at 157 Rust is 6,172,779 of 51,249,799 lines, 12.04%.
 
 ## What a "line" is
 
 - A line is a **newline character** in the file's content (`content.count(b'\n')`, the same as `wc -l`). A last line
-  without a trailing newline is not counted.
+  without a trailing newline is not counted. A binary file counts 0 lines (see "Which files").
 - It is **not SLOC**: blank lines, comments and licence headers count like code.
 - It is **lines in files, not authored code**. Vendored third-party code is included wherever it sits (for example
   `third_party/rust`, which also holds Mozilla-written crates).
@@ -53,29 +58,38 @@ tree and `git cat-file --batch` reads the content of each counted blob once.
 - **Symbolic links** are blobs too (mode `120000`), so a link with a counted extension is counted; its content is the
   link target, normally with no newline, so it adds 0 lines. The 157 tree has no symbolic links at all.
 - **Submodules** (tree entries of type `commit`) are skipped. The 157 tree has none.
-- **Binary files are not detected.** If a file has a counted extension, its newline bytes are counted whatever it
-  contains.
+- **Binary files count 0 lines.** A blob with a NUL byte anywhere in its content is taken as binary and counts 0
+  lines, whatever its extension (`count_lines()` in `dev/history.py`). At 157 this leaves out the nine binary `.ts`
+  files (MPEG transport streams used as media test files, 33,851 newline bytes) and, in All files only, 57 Rust,
+  278 JavaScript and 1,265 HTML/CSS lines. Browser files lose nothing to this rule in any release; in All files it
+  takes 3 to 278 JavaScript and 788 to 1,598 HTML/CSS lines per release, and 57 Rust lines from 119 on.
 - **`mobile/`** holds Mozilla's Android code (Firefox for Android, Focus, GeckoView, Android Components) and a little
   iOS and shared code. It is counted in All files and skipped in Browser files (a prefix match on the path, stored as
   `browser_excluded_prefixes` in the data). At release 157 it holds no Rust, 90,556 of the 147,346 Java lines in All
-  files, and 970,364 lines of Kotlin, which is not counted in either view.
+  files, and 970,364 of the 1,048,566 Kotlin lines (92.5%; 5,855 of the 5,992 `.kt` files), so Browser files hold
+  only 72,324 lines of Kotlin.
 
 ### Extensions
 
 Matching is case-sensitive and uses the last extension only (`foo.sys.mjs` counts as `.mjs`; `.C` or `.JS` would not
-be counted; the 157 tree has no such files).
+be counted; the 157 tree has no such files). `.S` and `.s` are both listed, so both count.
 
 | Key in the data | Shown as | Extensions |
 |---|---|---|
 | `rust` | Rust | `.rs` |
 | `c` | C | `.c` |
-| `cpp` | C++ | `.cc` `.cpp` `.cxx` `.hxx` |
+| `cpp` | C++ | `.cc` `.cpp` `.cxx` `.hxx` `.hpp` `.hh` |
 | `h` | split between C and C++ | `.h` |
-| `js` | JavaScript | `.jsm` `.jsx` `.js` `.mjs` |
+| `js` | JavaScript/TypeScript (with `ts`) | `.jsm` `.jsx` `.js` `.mjs` |
+| `ts` | JavaScript/TypeScript (with `js`) | `.ts` |
 | `html` | HTML/CSS | `.htm` `.html` `.xhtml` `.xht` `.css` |
 | `py` | Python | `.py` |
-| `java` | Java | `.java` |
-| `asm` | Assembly | `.asm` |
+| `java` | Java/Kotlin (with `kt`) | `.java` |
+| `kt` | Java/Kotlin (with `java`) | `.kt` |
+| `asm` | Assembly | `.asm` `.S` `.s` |
+
+JavaScript and TypeScript, and Java and Kotlin, are stored separately and added together for the
+JavaScript/TypeScript and Java/Kotlin series on the charts (see "In short").
 
 Everything else is left out, both from the language lines and from the total that shares are computed against.
 Some sizeable uncounted source extensions in the whole 157 tree, `mobile/` included (examples, not a complete
@@ -83,17 +97,11 @@ ranking; the 2,853 `moz.build` files, for instance, hold 224,982 lines and the `
 
 | Extension | Files | Lines |
 |---|---:|---:|
-| `.kt` (Kotlin; 5,855 of the files under `mobile/`) | 5,992 | 1,048,566 |
-| `.hpp` (C++ headers) | 1,102 | 602,021 |
-| `.ts` (TypeScript) | 2,086 | 566,722 |
 | `.inc` | 147 | 260,473 |
-| `.S` (assembly, preprocessed) | 229 | 197,306 |
 | `.mm` (Objective-C++) | 416 | 135,189 |
-| `.hh` (C++ headers) | 284 | 112,934 |
-| `.s` (assembly) | 62 | 38,533 |
 
-Nine of the `.ts` files are binary MPEG transport streams (media test files), not TypeScript; they hold 33,851 of
-those lines. Adding any of these extensions is a method change (see "Changing the method").
+Kotlin script files (`.kts`) are not counted either: matching uses the last extension and only `.kt` is listed.
+Adding any of these extensions is a method change (see "Changing the method").
 
 ### Headers
 
@@ -102,12 +110,13 @@ page splits them at display time with the ratio stored in the data (`header_spli
 The code records only the figure ("by location about 81.5% of headers are C++"), not how it was measured or on which
 commit, and the same ratio is applied to every release and to both views, so treat the C/C++ boundary as
 approximate. The split moves lines between C and C++ only; the Rust share and the totals do not depend on it.
+`.hpp` and `.hh` are C++ headers and count as C++ directly (key `cpp`); only `.h` is split.
 
 ## The two views
 
 ### All files
 
-Every counted file at the commit, with no exclusions. This is the closest to what the original chart measured (that
+Every counted file at the commit, with no path excluded. This is the closest to what the original chart measured (that
 chart ran `git ls-files` and `wc -l` at the head, did not count `.mjs` and split headers 1/3 to 2/3). It is dominated
 by tests and test data: web-platform-tests (`testing/web-platform/tests/`, about 163,000 files at 157) and `test262`,
 which is vendored twice (`js/src/tests/test262/` and a copy inside web-platform-tests).
@@ -181,37 +190,40 @@ A failure in steps 1 to 3 commits and deploys nothing.
 One header line, then one release per line (a new release is a one-line diff). Shortened:
 
 ```
-{"method_version":2,"browser_excluded_prefixes":["mobile/"],"header_split":{"c":0.185,"cpp":0.815},"releases":[
+{"method_version":3,"browser_excluded_prefixes":["mobile/"],"header_split":{"c":0.185,"cpp":0.815},"releases":[
 {"v":157,"tag":"FIREFOX_157_0_RELEASE","sha":"fdd757a2...","date":"2026-09-24",
- "all":{"rust":6172836,"c":...,"cpp":...,"h":...,"js":...,"html":...,"py":...,"java":147346,"asm":...},
- "browser":{"rust":5616315,"c":3889947,"cpp":7027103,"h":4858882,"js":2973279,"html":195821,"py":1275464,"java":55497,"asm":295548}}
+ "all":{"rust":6172779,"c":3992382,"cpp":8522133,"h":5075167,"js":16228932,"ts":532871,"html":6838595,"py":2159226,
+        "java":147346,"kt":1048566,"asm":531802},
+ "browser":{"rust":5616315,"c":3889947,"cpp":7742052,"h":4858882,"js":2973279,"ts":173155,"html":195821,"py":1275464,
+            "java":55497,"kt":72324,"asm":531363}}
 ]}
 ```
 
 | Field | Meaning |
 |---|---|
-| `method_version` | Version of the counting rules the records were made with (2) |
-| `browser_excluded_prefixes` | Path prefixes skipped in Browser files (`mobile/`); All files skips nothing |
+| `method_version` | Version of the counting rules the records were made with (3) |
+| `browser_excluded_prefixes` | Path prefixes skipped in Browser files (`mobile/`); All files skips no path |
 | `header_split` | Share of `h` lines given to C and to C++ at display time |
 | `v`, `tag`, `sha`, `date` | Major version, the tag counted, its commit and the commit's date |
-| `all`, `browser` | Lines per language key in each view; `c` and `cpp` exclude headers, which are `h` |
+| `all`, `browser` | Lines per language key in each view; `c` and `cpp` exclude `.h` headers, which are `h`; `js` and `ts`, `java` and `kt` are separate |
 
-Totals are not stored: a total is the sum of the nine language keys. `all` minus `browser` is the lines of test files
+Totals are not stored: a total is the sum of the eleven language keys. `all` minus `browser` is the lines of test files
 and of `mobile/` together, not the test lines alone.
 
 ### `build/data.json` (deployed as `data.json`)
 
 `data/history.json` plus a `head` object (`sha`, `date`, `all`, `browser`, the same shapes) and three fields kept for
 readers of the old chart: `meta_date` (time of the run), `title_date` (for example `Oct 2026`) and `lang` (lines per
-language at the head, All files, headers split). Consumers should sum only the nine language keys.
+language at the head, All files, headers split). Consumers should sum only the eleven language keys.
 
 ### Changing the method
 
-`method_version` is 2. Any change to the rules (the counted extensions, the test rules, the excluded prefixes or how
-lines are counted) bumps it and requires regenerating every release, so all stored records always follow one set of
-rules. Changing the `header_split` ratio is not a bump: headers are stored raw, so the new ratio applies to every
-release at display time; say so in the commit that changes it. The history of the rules themselves is in the git
-history of this repository.
+`method_version` is 3: the rules described here, which count Kotlin (`.kt`), TypeScript (`.ts`), `.hpp` and `.hh` as
+C++ and `.S` and `.s` as Assembly, and count a blob with a NUL byte as 0 lines. Any change to the rules (the counted
+extensions, the test rules, the excluded prefixes or how lines are counted) bumps it and requires regenerating every
+release, so all stored records always follow one set of rules. Changing the `header_split` ratio is not a bump:
+headers are stored raw, so the new ratio applies to every release at display time; say so in the commit that changes
+it. The history of the rules themselves is in the git history of this repository.
 
 ## Reproducing the numbers
 
@@ -237,10 +249,13 @@ versions; compare it with the committed file whenever `method_version` changes.
 | Check | Result |
 |---|---|
 | Unit tests (`python3 -m unittest discover -s dev`, run by every workflow run) | The release set (125 and newest-major rules), the test rules, excluded prefixes, the file layout, the zero-timestamp rule, append and the site data on small generated repositories |
-| Rust in All files and `mobile/` | No `.rs` file under `mobile/` at 157, so Rust in All files is the same with or without `mobile/` (6,172,836 lines) |
+| Rust in All files and `mobile/` | No `.rs` file under `mobile/` at 157, so Rust in All files is the same with or without `mobile/` (6,172,779 lines) |
 | Java in All files at 157 | 147,346 lines: 56,790 outside `mobile/` and 90,556 under it |
 | Unusual tree entries at 157 | No symbolic links, no submodules, no `.C` or `.JS` files |
-| Binary `.ts` files at 157 | 9 MPEG transport streams, 33,851 newline bytes, all outside the counted extensions |
+| Kotlin at 157 | All files 1,048,566 lines (970,364 under `mobile/`), Browser files 72,324 |
+| Binary `.ts` files at 157 | 9 MPEG transport streams, 33,851 newline bytes, count 0: TypeScript in All files is 532,871 lines (566,722 in all `.ts` files minus 33,851) |
+| Binary rule, against counts made without it (the keys `rust` `c` `h` `js` `html` `py` `java`, every release) | Browser files identical; All files lower only in Rust (57 lines, 119 to 157), JavaScript and HTML/CSS, at most 1,634 lines together in a release |
+| `.hpp` `.hh` `.S` `.s` at 157 | All files `cpp` grows by exactly their 714,955 lines and `asm` by their 235,839: none of them is binary |
 
 ## Known limitations and biases
 
@@ -248,14 +263,18 @@ versions; compare it with the committed file whenever `method_version` changes.
 - **Paths, not builds.** Neither view knows what a given build compiles or ships; Browser files includes code for
   every platform and every vendored library in the tree.
 - **The header split is one fixed ratio** for all releases and both views.
-- **Extensions left out** (`.hpp`, `.hh`, `.mm`, `.S`, `.ts`, `.kt`, ...) are in neither the numerator nor the total.
+- **Extensions left out** (`.mm`, `.inc`, `.kts`, ...) are in neither the numerator nor the total.
+- **The binary rule is one test** (a NUL byte anywhere in the blob). A text file saved as UTF-16 contains NUL bytes too
+  and counts 0 like a binary file; a binary file without any NUL byte would be counted.
+- **Two pairs share a series** on the charts (JavaScript/TypeScript, Java/Kotlin); the split is only in the tooltips,
+  the Lines-mode tables and the data.
 - **The head date.** If the head commit had a zero timestamp, the depth-1 checkout would not hold an ancestor with a
   real one and the build step would fail (unlike `append`, it does not fetch more history). This has not happened.
 
 ## What "Rust share" says, and what it does not
 
-It says: of the newline-terminated lines in files with the counted extensions, in the chosen view, this fraction is in
-`.rs` files.
+It says: of the newline-terminated lines in non-binary files with the counted extensions, in the chosen view, this
+fraction is in `.rs` files.
 
 It does not say:
 
@@ -263,7 +282,8 @@ It does not say:
 - **How much of the running browser is Rust.** Lines are not machine code, and neither view is limited to what a
   build compiles.
 - **That other languages did not change.** A share moves when any language moves: JavaScript in Browser files, for
-  example, grew from 2,299,867 lines at 156 to 2,973,279 at 157.
+  example (key `js`, without TypeScript), grew from 2,299,867 lines at 156 to 2,973,279 at 157.
 - **Anything about files the extension set leaves out.** They are in neither the numerator nor the total.
 - **The same thing in both views.** All files is dominated by tests and test data and includes the Android code;
-  Browser files (21.4% Rust at 157) is what the repository holds outside the mobile apps and the tests.
+  Browser files (20.5% Rust at 157, against 12.0% in All files) is what the repository holds outside the mobile apps
+  and the tests.

@@ -26,10 +26,14 @@ FILES = [
     ('browser/y.cc', 1, 'cpp', False),
     ('browser/z.cxx', 1, 'cpp', False),
     ('browser/w.hxx', 1, 'cpp', False),
+    ('browser/foo.hpp', 4, 'cpp', False),   # v3: .hpp and .hh are C++ (not the split `h`)
+    ('browser/foo.hh', 4, 'cpp', False),
     ('browser/a.js', 2, 'js', False),
     ('browser/b.mjs', 3, 'js', False),
     ('browser/c.jsm', 1, 'js', False),
     ('browser/d.jsx', 1, 'js', False),
+    ('browser/e.ts', 5, 'ts', False),
+    ('mobile/android/f.ts', 7, 'ts', False),
     ('browser/p.html', 1, 'html', False),
     ('browser/q.css', 2, 'html', False),
     ('browser/r.xhtml', 1, 'html', False),
@@ -39,6 +43,8 @@ FILES = [
     ('browser/J.java', 1, 'java', False),
     ('browser/Foo.kt', 4, 'kt', False),
     ('media/x.asm', 2, 'asm', False),
+    ('media/y.S', 4, 'asm', False),   # v3: .S and .s are assembly
+    ('media/z.s', 3, 'asm', False),
     ('browser/tests/t.rs', 5, 'rust', True),
     ('browser/tests/t.cpp', 6, 'cpp', True),
     ('dom/test/test_a.html', 8, 'html', True),
@@ -52,18 +58,20 @@ FILES = [
     ('mobile/android/tests/KT.kt', 13, 'kt', True),
     ('toolkit/tests/U.kt', 6, 'kt', True),
     ('mobilex/keep.rs', 11, 'rust', False),  # "mobile/" is a directory prefix, not a name prefix
-    # not counted: other extensions (Kotlin scripts .kts too), upper-case extensions
+    # not counted: other extensions (Kotlin scripts .kts, Objective-C++ .mm, .inc too), upper-case extensions
     ('README.md', 4, None, False),
-    ('browser/foo.hpp', 4, None, False),
-    ('browser/foo.hh', 4, None, False),
     ('browser/foo.mm', 4, None, False),
-    ('browser/foo.S', 4, None, False),
+    ('browser/foo.inc', 4, None, False),
     ('mobile/android/build.gradle.kts', 4, None, False),
     ('browser/X.RS', 4, None, False),
     ('browser/Y.KT', 4, None, False),
+    ('browser/Z.TS', 4, None, False),
 ]
 # a file without a final newline counts like `wc -l`: newlines only
 NO_NEWLINE = ('browser/nonl.js', 'a\nb', 'js', False)
+# a blob with a NUL byte is binary and counts 0 lines, whatever its extension (an MPEG transport stream named .ts)
+BINARY = [('dom/media/stream.ts', b'G\x00\x11\x10\n' * 9, 'ts', False),
+          ('browser/packed.js', b'var a;\n\x00\n', 'js', False)]
 
 # is_test() cases built from the test-path rules (described in docs/methodology.md)
 IS_TEST = [
@@ -140,7 +148,7 @@ def git(cwd, *args, date=None):
 def write(root, path, text):
     full = os.path.join(root, path)
     os.makedirs(os.path.dirname(full), exist_ok=True)
-    with open(full, 'w') as f:
+    with open(full, 'wb' if isinstance(text, bytes) else 'w') as f:
         f.write(text)
 
 
@@ -190,7 +198,9 @@ class GitTestCase(unittest.TestCase):
         for path, n, _, _ in FILES:
             write(up, path, body(n))
         write(up, NO_NEWLINE[0], NO_NEWLINE[1])
-        cls.c1_files = FILES + [(NO_NEWLINE[0], 1, 'js', False)]
+        for path, data, _, _ in BINARY:
+            write(up, path, data)
+        cls.c1_files = FILES + [(NO_NEWLINE[0], 1, 'js', False)] + [(p, 0, k, t) for p, _, k, t in BINARY]
         cls.commit('c1', '2016-04-26T10:00:00Z')
         git(up, 'tag', '-a', '-m', '46', 'FIREFOX_46_0_RELEASE')
 
@@ -288,10 +298,15 @@ class CountTest(GitTestCase):
         # Kotlin (v3): counted in both views; mobile/ Kotlin and Kotlin tests only in "all"; .kts never
         self.assertEqual(r['all']['kt'], 4 + 40 + 13 + 6)
         self.assertEqual(r['browser']['kt'], 4)
-        self.assertEqual(r['all']['js'], 2 + 3 + 1 + 1 + 9 + 1)  # .mjs counted, no-newline file counts 1
+        self.assertEqual(r['all']['js'], 2 + 3 + 1 + 1 + 9 + 1)  # .mjs counted, no-newline file counts 1, binary 0
         self.assertEqual(r['browser']['js'], 2 + 3 + 1 + 1 + 1)
+        # v3: TypeScript (the binary .ts counts 0), .hpp/.hh in cpp (h is .h only), .S/.s in asm
+        self.assertEqual((r['all']['ts'], r['browser']['ts']), (5 + 7, 5))
+        self.assertEqual((r['all']['cpp'], r['browser']['cpp']), (4 + 1 + 1 + 1 + 4 + 4 + 6, 4 + 1 + 1 + 1 + 4 + 4))
+        self.assertEqual(r['all']['h'], 10)
+        self.assertEqual((r['all']['asm'], r['browser']['asm']), (2 + 4 + 3, 2 + 4 + 3))
         self.assertEqual(list(r), ['sha', 'date', 'all', 'browser'])
-        self.assertEqual(list(r['all']), ['rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'kt', 'asm'])
+        self.assertEqual(list(r['all']), ['rust', 'c', 'cpp', 'h', 'js', 'ts', 'html', 'py', 'java', 'kt', 'asm'])
         self.assertEqual(list(r['browser']), list(r['all']))
         self.assertEqual(r['date'], '2016-04-26')
         self.assertEqual(r['sha'], git(self.up, 'rev-parse', 'FIREFOX_46_0_RELEASE^{commit}'))
@@ -306,7 +321,7 @@ class CountTest(GitTestCase):
         r = history.count_release(self.up, 'FIREFOX_46_0_RELEASE', ('media/', 'browser/tests/'))
         self.assertEqual((r['all'], r['browser']), expected(self.c1_files, ('media/', 'browser/tests/')))
         self.assertEqual(r['all'], default['all'])
-        self.assertEqual((r['all']['asm'], r['browser']['asm']), (2, 0))
+        self.assertEqual((r['all']['asm'], r['browser']['asm']), (9, 0))
 
     def test_shared_cache_gives_same_counts(self):
         cache = {}
@@ -602,7 +617,7 @@ class BuildSiteTest(GitTestCase):
         self.assertEqual((data['method_version'], data['browser_excluded_prefixes']), (3, ['mobile/']))
         head = data['head']
         self.assertEqual(list(head), ['sha', 'date', 'all', 'browser'])
-        self.assertEqual(list(head['all']), ['rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'kt', 'asm'])
+        self.assertEqual(list(head['all']), ['rust', 'c', 'cpp', 'h', 'js', 'ts', 'html', 'py', 'java', 'kt', 'asm'])
         self.assertEqual(list(head['browser']), list(head['all']))
         self.assertEqual(head['sha'], git(self.up, 'rev-parse', 'HEAD'))
         self.assertEqual(head, history.count_release(self.up, 'HEAD'))
@@ -612,15 +627,17 @@ class BuildSiteTest(GitTestCase):
         self.assertEqual(data['lang'], [
             {'name': 'Rust', 'loc': a['rust']}, {'name': 'C', 'loc': a['c'] + hc},
             {'name': 'C++', 'loc': a['cpp'] + a['h'] - hc}, {'name': 'JavaScript', 'loc': a['js']},
-            {'name': 'HTML', 'loc': a['html']}, {'name': 'Python', 'loc': a['py']},
+            {'name': 'TypeScript', 'loc': a['ts']}, {'name': 'HTML', 'loc': a['html']}, {'name': 'Python', 'loc': a['py']},
             {'name': 'Java', 'loc': a['java']}, {'name': 'Kotlin', 'loc': a['kt']},
             {'name': 'Assembly', 'loc': a['asm']}])
         self.assertEqual(sum(x['loc'] for x in data['lang']), sum(a.values()))
         self.assertEqual(a['h'], 10)
         # the pie is "all", so mobile/ is in it: Java 1 + 100 + 20, Rust 73 + 27 + 20 + 5 (browser/later.rs)
-        self.assertEqual((data['lang'][6]['loc'], data['lang'][0]['loc']), (121, 125))
-        self.assertEqual(data['lang'][7], {'name': 'Kotlin', 'loc': 4 + 40 + 13 + 6})   # mobile/ is in the pie
-        self.assertEqual((data['lang'][1]['loc'], data['lang'][2]['loc']), (2 + 2, 13 + 10 - 2))
+        self.assertEqual((data['lang'][7]['loc'], data['lang'][0]['loc']), (121, 125))
+        self.assertEqual(data['lang'][8], {'name': 'Kotlin', 'loc': 4 + 40 + 13 + 6})   # mobile/ is in the pie
+        self.assertEqual(data['lang'][4], {'name': 'TypeScript', 'loc': 5 + 7})       # the binary .ts counts 0
+        # C++ is cpp (.hpp and .hh included) plus its share of .h
+        self.assertEqual((data['lang'][1]['loc'], data['lang'][2]['loc']), (2 + 2, 21 + 10 - 2))
 
     def test_cli_uses_current_time(self):
         out = self.mkdtemp()
@@ -631,7 +648,7 @@ class BuildSiteTest(GitTestCase):
         now = datetime.now(timezone.utc)
         self.assertTrue(data['meta_date'].endswith('+00:00'))
         self.assertLess(abs((datetime.fromisoformat(data['meta_date']) - now).total_seconds()), 300)
-        self.assertEqual(len(data['lang']), 9)
+        self.assertEqual(len(data['lang']), 10)
 
 
 if __name__ == '__main__':

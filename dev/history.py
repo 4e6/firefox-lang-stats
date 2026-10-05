@@ -27,10 +27,13 @@ Release set: FIREFOX_<n>_0_RELEASE for n = 46 up to the newest major with a _REL
 tag inside that range is counted at FIREFOX_<n>_0_BUILD1 and stored under v = n (only 125 today). A newer major that
 has only BUILD tags (still in the release process) is not added until its _RELEASE tag exists.
 
-Languages (by extension; C/C++ headers are kept apart as `h` and split at display time with `header_split`):
-rust .rs | c .c | cpp .cc .cpp .cxx .hxx | h .h | js .jsm .jsx .js .mjs | html .htm .html .xhtml .xht .css |
-py .py | java .java | kt .kt | asm .asm. Changing the set, the test rules or the views means bumping METHOD_VERSION
-and regenerating (v3 added kt to v2).
+Languages (by extension, case-sensitive; `.h` headers are kept apart as `h` and split between C and C++ at display
+time with `header_split`):
+rust .rs | c .c | cpp .cc .cpp .cxx .hxx .hpp .hh | h .h | js .jsm .jsx .js .mjs | ts .ts |
+html .htm .html .xhtml .xht .css | py .py | java .java | kt .kt | asm .asm .S .s
+A blob that contains a NUL byte is binary and counts 0 lines (the .ts MPEG transport streams of the media tests,
+for example). Changing the set, the test rules, the binary rule or the views means bumping METHOD_VERSION and
+regenerating. v3 = v2 plus kt, ts, .hpp/.hh as cpp, .S/.s as asm and the binary rule.
 
 How to regenerate data/history.json from scratch (about 10 minutes and 3.5 GB of disk; run it locally, not in CI):
 
@@ -74,17 +77,17 @@ HEADER_SPLIT = {'c': 0.185, 'cpp': 0.815}
 
 # language key -> extensions; the key order is the order of the columns in every record
 LANGS = [
-    ('rust', ('.rs',)), ('c', ('.c',)), ('cpp', ('.cc', '.cpp', '.cxx', '.hxx')), ('h', ('.h',)),
-    ('js', ('.jsm', '.jsx', '.js', '.mjs')), ('html', ('.htm', '.html', '.xhtml', '.xht', '.css')),
-    ('py', ('.py',)), ('java', ('.java',)), ('kt', ('.kt',)), ('asm', ('.asm',)),
+    ('rust', ('.rs',)), ('c', ('.c',)), ('cpp', ('.cc', '.cpp', '.cxx', '.hxx', '.hpp', '.hh')), ('h', ('.h',)),
+    ('js', ('.jsm', '.jsx', '.js', '.mjs')), ('ts', ('.ts',)), ('html', ('.htm', '.html', '.xhtml', '.xht', '.css')),
+    ('py', ('.py',)), ('java', ('.java',)), ('kt', ('.kt',)), ('asm', ('.asm', '.S', '.s')),
 ]
 EXT2LANG = {e: k for k, es in LANGS for e in es}
 KEYS = [k for k, _ in LANGS]
 EXT_RE = re.compile(r'(\.[A-Za-z0-9]+)$')
 
 # name and key of each slice of the old pie chart, in the order of the deployed data.json
-LEGACY_LANG = [('Rust', 'rust'), ('C', 'c'), ('C++', 'cpp'), ('JavaScript', 'js'), ('HTML', 'html'),
-               ('Python', 'py'), ('Java', 'java'), ('Kotlin', 'kt'), ('Assembly', 'asm')]
+LEGACY_LANG = [('Rust', 'rust'), ('C', 'c'), ('C++', 'cpp'), ('JavaScript', 'js'), ('TypeScript', 'ts'),
+               ('HTML', 'html'), ('Python', 'py'), ('Java', 'java'), ('Kotlin', 'kt'), ('Assembly', 'asm')]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 # directory names that mark test code (any path component); the rules are described in docs/methodology.md
@@ -195,7 +198,9 @@ def tree(repo, rev):
 
 
 def count_lines(repo, oids):
-    """({oid: newline count}, [missing oids]) for blobs, via one `git cat-file --batch` (no lazy fetch)."""
+    """({oid: newline count}, [missing oids]) for blobs, via one `git cat-file --batch` (no lazy fetch).
+
+    A blob that contains a NUL byte is binary (not source code) and counts 0."""
     p = subprocess.Popen(['git', '-C', repo, 'cat-file', '--batch'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          env=no_lazy_fetch())
 
@@ -217,7 +222,7 @@ def count_lines(repo, oids):
         size = int(h[2])
         data = p.stdout.read(size)
         p.stdout.read(1)
-        lines[oid] = data.count(b'\n')
+        lines[oid] = 0 if b'\0' in data else data.count(b'\n')
     writer.join()
     p.stdout.close()
     if p.wait():

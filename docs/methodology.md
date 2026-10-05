@@ -66,9 +66,11 @@ tree and `git cat-file --batch` reads the content of each counted blob once.
   takes 3 to 278 JavaScript and 788 to 1,598 HTML/CSS lines per release, and 57 Rust lines from 119 on.
 - **`mobile/`** holds Mozilla's Android code (Firefox for Android, Focus, GeckoView, Android Components) and a little
   iOS and shared code. It is counted in All files and skipped in Browser files (a prefix match on the path; the data
-  stores it, with the tooling prefixes of "Browser files" below, as `browser_excluded_prefixes`). At release 157 it holds no Rust, 90,556 of the 147,346 Java lines in All
-  files, and 970,364 of the 1,048,566 Kotlin lines (92.5%; 5,855 of the 5,992 `.kt` files), so Browser files hold
-  only 72,324 lines of Kotlin.
+  stores it, with the tooling prefixes of "Browser files" below, as `browser_excluded_prefixes`). At release 157 it
+  holds no Rust, 90,556 of the 147,346 Java lines in All files, and 970,364 of the 1,048,566 Kotlin lines (92.5%;
+  5,855 of the 5,992 `.kt` files), so Browser files hold only 72,324 lines of Kotlin. Android code outside `mobile/`
+  counts as Browser files: most of those 72,324 lines (63,151 at 157) are the generated Kotlin bindings under
+  `toolkit/components/uniffi-bindgen-gecko-js/android/`.
 
 ### Extensions
 
@@ -138,7 +140,7 @@ Browser files at 157:
 |---|---|---|---:|
 | `mobile/` | The Android apps: Firefox for Android, Focus, GeckoView, Android Components | Not the desktop browser | 550,595 |
 | `third_party/python/` | Vendored Python packages (pip, setuptools, pygments, aiohttp with its C code, ...) | Used by the build system and the tools, not by the browser | 891,420 |
-| `third_party/node/` | Vendored Node packages (webpack, Babel and their dependencies) | Run at build time to bundle code; new at 157 | 706,931 |
+| `third_party/node/` | Vendored Node packages: webpack, Babel and their dependencies, and the React/Redux runtime packages (80,369 lines with their small dependencies) | Used at build time to bundle code; new at 157 (see below) | 706,931 |
 | `python/` | mach, mozbuild, mozlint and the other Mozilla Python tools; vendored Python packages too before 55 | Build system and developer tools | 103,933 |
 | `tools/@types/` | TypeScript declaration files (`.d.ts`) describing Gecko's APIs | Only type-check the JavaScript; never compiled or shipped | 84,999 |
 | `taskcluster/` | The CI task graph, its Docker images and CI scripts | Continuous integration | 44,332 |
@@ -150,12 +152,20 @@ Browser files at 157:
 
 The ten tooling prefixes remove 1,888,404 lines at 157, most of them vendored (`third_party/python/` and
 `third_party/node/` together 1,598,351): 956,435 Python lines, 702,552 JavaScript, 105,951 TypeScript, 94,744 C,
-13,384 C++ and headers, 12,896 HTML/CSS and 2,442 Rust (`tools/lint` 1,835, `taskcluster` 607). Not everything under `build/` and `tools/` is tooling, so
-those directories are not excluded as a whole: `tools/profiler/` is the Gecko Profiler, compiled into the browser
-(47,628 lines at 157); `tools/fuzzing/` and `tools/performance/` are compiled into Gecko too; `build/unix/` holds
-elfhack and stdc++compat, which end up in Linux builds; `build/rust/` holds small crates linked into libxul; and
-`build/stlport/` (releases 46 to 51, 85,629 lines) was the C++ runtime of Android builds. `config/` (5,614 lines at
-157) mixes build scripts with wrapper headers used when compiling the browser, so it stays as well.
+13,384 C++ and headers, 12,896 HTML/CSS and 2,442 Rust (`tools/lint` 1,835, `taskcluster` 607). Not everything
+under `build/` and `tools/` is tooling, so those directories are not excluded as a whole: `tools/profiler/` is the
+Gecko Profiler, compiled into the browser (47,628 lines at 157); `tools/fuzzing/` and `tools/performance/` are
+compiled into Gecko too; `build/unix/` holds elfhack and stdc++compat, which end up in Linux builds; `build/rust/`
+holds small crates linked into libxul; and `build/stlport/` (releases 46 to 51, 85,629 lines) was the C++ runtime of
+Android builds. `config/` (5,614 lines at 157) mixes build scripts with wrapper headers used when compiling the
+browser, so it stays as well.
+
+`third_party/node/` is not pure tooling. At 157 the new tab page's build script
+(`browser/extensions/newtab/build-newtab-bundles.py`) runs webpack on `third_party/node/node_modules`, and its
+vendor bundle (`content-src/vendor.mjs`) imports React, ReactDOM, Redux, React Redux, PropTypes and React Transition
+Group from there. Those 80,369 lines therefore reach the shipped new tab page in bundled form, yet are left out of
+Browser files with the rest of the directory. A second copy of React and Redux, `toolkit/content/vendor/react/`
+(30,430 lines at 157, packaged by `toolkit/content/jar.mn`), is not under any excluded prefix and stays counted.
 
 A path is a test path if any of these hold:
 
@@ -294,21 +304,30 @@ versions; compare it with the committed file whenever `method_version` changes.
 
 ## Reading the series
 
-Some steps in the charts are real changes to the repository, not counting artefacts. Three are known:
+Some steps in the charts are real changes to the repository, not counting artefacts. The steps below are explained
+here; others are not explained yet. For example, the Java/Kotlin series in All files rises by 105,340 lines at 55
+and by 70,346 at 79 and falls by 110,629 at 151.
 
 - **Release 71, Java.** In All files Java falls from 551,092 to 161,770 lines: Fennec, the old Firefox for Android
   UI, was removed from mozilla-central (Bug 1580356, commit `997b7d114877`; 2,147 `.java` files, 345,851 lines under
   `mobile/android/` in `thirdparty`, `base`, `services`, `app` and `stumbler`), and so were the Robocop tests (Bug
   1580832). All of it was under `mobile/`, so Browser files are not affected by them. Browser files have their own,
   smaller Java step at 71 (49,147 to 26,423 lines): the WebRTC Android SDK (`media/webrtc/trunk/webrtc/sdk/android`,
-  about 22,700 lines) was removed (Bug 1588346). About 5,500 of those lines came back at 75 (Bug 1578073).
+  about 22,700 lines) was removed (Bug 1588346). The directory came back at 75 in a newer form: commit
+  `07116fe4e2b4` (Bug 1578073) added 5,946 lines of newer webrtc.org Android camera code, `sdk/android` holds 5,943
+  lines at 75, and Java in Browser files rises by 5,516 lines at 75.
 - **Release 126, Kotlin.** In All files Kotlin jumps from 36,678 to 615,415 lines because the firefox-android
   repository (Android Components, Fenix, Focus) was merged into mozilla-central on 2024-03-18 (Bug 1822248, commit
   `3b8cd5f81382`). Release 125 is counted at `FIREFOX_125_0_BUILD1`, whose branch was cut about an hour before the
   merge, so no 125 tag could include it. Java barely moves (278,159 to 279,504).
 - **Java/Kotlin as one series.** Because of the two steps above, the combined Java/Kotlin series in All files falls at
-  71 and rises at 126. In Browser files it stays small and almost flat (56,542 lines at 126; the only visible step is
-  the WebRTC SDK at 71), because the Android code is under `mobile/`.
+  71 and rises at 126. In Browser files the series is small (127,821 lines, 0.5% of the view at 157) but not flat:
+  Android code outside `mobile/` counts there. Besides the WebRTC SDK step at 71 (-22,724), it doubles at 155
+  (64,480 to 127,535 lines), when 62,985 lines of generated Kotlin bindings arrived under
+  `toolkit/components/uniffi-bindgen-gecko-js/android/` (64,014 lines with their tests, most of the +65,004 step
+  in All files at 155).
+  Other steps of similar size to the one at 71 are not explained here: +15,978 at 56, +20,078 at 96, +11,943 at 106,
+  -9,357 at 48 and -8,119 at 113.
 
 ## Known limitations and biases
 

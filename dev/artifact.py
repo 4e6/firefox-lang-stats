@@ -521,20 +521,23 @@ def objects_dir(ctx, repo):
 
 
 @contextlib.contextmanager
-def borrowed_repo(ctx, repo, remote=GIT_REMOTE):
-    """A temporary bare repository that sees every object of `repo` (git alternates) and can fetch more from
-    `remote` as a blobless partial clone. `repo` is only read. Removed on exit."""
+def scratch_repo(ctx, remote=GIT_REMOTE):
+    """A temporary bare repository that fetches from `remote` as a blobless partial clone. Removed on exit."""
     tmp = tempfile.mkdtemp(prefix='artifact-git-')
     try:
         run_git(ctx, tmp, 'init', '-q', '--bare')
-        with open(os.path.join(tmp, 'objects', 'info', 'alternates'), 'w') as f:
-            f.write(objects_dir(ctx, repo) + '\n')
         run_git(ctx, tmp, 'remote', 'add', 'origin', remote)
         run_git(ctx, tmp, 'config', 'remote.origin.promisor', 'true')
         run_git(ctx, tmp, 'config', 'remote.origin.partialclonefilter', 'blob:none')
         yield tmp
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def borrow_objects(ctx, tmp, repo):
+    """Let `tmp` read every object of `repo` (git alternates); `repo` itself is only read."""
+    with open(os.path.join(tmp, 'objects', 'info', 'alternates'), 'w') as f:
+        f.write(objects_dir(ctx, repo) + '\n')
 
 
 def du(path):
@@ -592,12 +595,16 @@ def count_paths(ctx, repo, sha, paths, excludes=history.DEFAULT_EXCLUDES, remote
     Paths with other extensions are not counted; paths missing from the tree are reported."""
     excludes = tuple(excludes)
     st = {'excluded': sum(1 for p in paths if excludes and p.startswith(excludes))}
-    with borrowed_repo(ctx, repo, remote) as tmp:
-        if not has_commit(ctx, tmp, sha):
+    # The commit and its trees come from the checkout if it has them, otherwise from `remote` (depth 1, no blobs,
+    # about 17 MiB). The checkout's objects are borrowed only after that fetch: a promisor fetch that finds local
+    # objects referenced by the new trees would copy all of them (about 1 GB) into a new pack.
+    with scratch_repo(ctx, remote) as tmp:
+        if not has_commit(ctx, repo, sha):
             log('fetching', sha[:12], 'from', remote, '(depth 1, no blobs)')
             run_git(ctx, tmp, 'fetch', '-q', '--no-tags', '--no-write-fetch-head', '--depth', '1',
                     '--filter=blob:none', 'origin', sha)
             st['fetched_commit'] = True
+        borrow_objects(ctx, tmp, repo)
         entries = [(oid, p, lang) for oid, p, lang in history.tree(tmp, sha, excludes) if p in paths]
         seen = {p for _, p, _ in entries}
         counted = {p for p in paths if lang_of(p) and not (excludes and p.startswith(excludes))}

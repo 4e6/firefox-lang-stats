@@ -125,7 +125,7 @@ table.data td.gap { color: var(--muted); }
 .vhelp p { margin: 0 0 6px; }
 .vhelp p:last-child { margin-bottom: 0; }
 .vhelp b { color: var(--ink); font-weight: 600; }
-.vhelp code, .pfoot code { font-family: var(--mono); font-size: 12px; }
+.vhelp code { font-family: var(--mono); font-size: 12px; }
 .pfoot { margin: 0; border-top: 1px solid var(--hair); padding-top: 10px; color: var(--muted); font-size: 12px; }
 @media (max-width: 760px) { .pie-grid { grid-template-columns: 1fr; } h1 { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -145,7 +145,7 @@ table.data td.gap { color: var(--muted); }
   <div class="tabs" role="tablist" id="tabs" aria-label="Views"></div>
   <div id="panel" class="panel" role="tabpanel"><p class="note">Loading data…</p></div>
 
-  <p class="pfoot"><a href="methodology.html">Methodology</a> · <a href="data.json">data.json</a><span id="tag-note" hidden></span></p>
+  <p class="pfoot"><a href="methodology.html">Methodology</a> · <a href="data.json">data.json</a></p>
 </div>
 
 <script>
@@ -165,7 +165,7 @@ const TABS = [
   { k: 'comp', name: 'Composition', title: 'What Firefox is made of' },
   { k: 'multi', name: 'Small multiples', title: 'One chart per language' },
   { k: 'share', name: 'Language share', title: null },
-  { k: 'pie', name: 'Pie + scrubber', title: 'One release at a time' }
+  { k: 'pie', name: 'Pie', title: 'One release at a time' }
 ];
 const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'asm'];   // only these are summed; sha and source are metadata
 const st = { tab: 'comp', view: 'nontest', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
@@ -199,7 +199,7 @@ function build(data) {
   const hs = data.header_split || {};
   const split = { c: typeof hs.c === 'number' ? hs.c : 0.185, cpp: typeof hs.cpp === 'number' ? hs.cpp : 0.815 };
   const rel = data.releases.filter(r => r && Number.isFinite(+r.v)).slice().sort((a, b) => a.v - b.v);
-  const pts = rel.map(r => ({ v: +r.v, label: String(r.v), title: 'Firefox ' + r.v, tag: r.tag, date: r.date, head: false,
+  const pts = rel.map(r => ({ v: +r.v, label: String(r.v), title: 'Firefox ' + r.v, date: r.date, head: false,
     asha: artSha(r.artifact), views: { all: convert(r.all, split), nontest: convert(r.nontest, split), artifact: convert(r.artifact, split) } }));
   if (data.head && typeof data.head === 'object') {
     const h = data.head;
@@ -658,12 +658,6 @@ function header() {
   const data = D.data;
   if (data.title_date) document.getElementById('title-date').textContent = data.title_date;
   if (data.meta_date) document.querySelector('meta[name="date"]').setAttribute('content', data.meta_date);
-  // the one release counted at another tag than FIREFOX_<n>_0_RELEASE (125) is named in the footer
-  const odd = D.pts.filter(p => !p.head && p.tag && !/_0_RELEASE$/.test(p.tag));
-  if (odd.length) {
-    const n = document.getElementById('tag-note'); n.hidden = false;
-    n.textContent = ' · ' + odd.map(p => 'Release ' + p.v + ' has no release tag; it is counted at ' + p.tag + '.').join(' ');
-  }
   const i = lastIdx('nontest'), j = lastIdx('all'), k = lastIdx('artifact');
   if (i >= 0) {
     const where = D.pts[i].head ? 'At the current head' : 'In ' + ttl(i);

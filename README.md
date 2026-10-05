@@ -8,7 +8,7 @@ Firefox 46 to the current head of the default branch. It has four views:
 - **Composition**: share (or lines) of every language per release, stacked.
 - **Small multiples**: one chart per language.
 - **Language share**: one language over time, one line per series.
-- **Pie + scrubber**: one release at a time, with the change against the previous one.
+- **Pie**: one release at a time, with the change against the previous one.
 
 Each view offers three series: **all files** (every tracked file), **non-test files** (test paths dropped) and
 **browser artifact** (the code built into the Linux x86-64 desktop browser; so far for release 157 and the head).

@@ -16,7 +16,6 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import history  # noqa: E402
-import artifact  # noqa: E402
 
 # (path, number of lines, language key or None if not counted, test path?)
 FILES = [
@@ -59,7 +58,7 @@ FILES = [
 # a file without a final newline counts like `wc -l`: newlines only
 NO_NEWLINE = ('browser/nonl.js', 'a\nb', 'js', False)
 
-# is_test() cases built from the rules in docs/reference/test-paths/README.md
+# is_test() cases built from the test-path rules (described in docs/methodology.md)
 IS_TEST = [
     # rule 1: path prefixes
     ('testing/web-platform/tests/a.js', True),
@@ -142,15 +141,16 @@ def body(n):
     return ''.join('line %d\n' % i for i in range(n))
 
 
-def expected(files, excludes=('mobile/',)):
-    allc, nont = dict.fromkeys(history.KEYS, 0), dict.fromkeys(history.KEYS, 0)
+def expected(files, browser_excluded=('mobile/',)):
+    """(all, browser): all counts every file of a counted language; browser drops the prefixes and the tests."""
+    allc, browser = dict.fromkeys(history.KEYS, 0), dict.fromkeys(history.KEYS, 0)
     for path, n, lang, test in files:
-        if lang is None or path.startswith(tuple(excludes)):
+        if lang is None:
             continue
         allc[lang] += n
-        if not test:
-            nont[lang] += n
-    return allc, nont
+        if not test and not path.startswith(tuple(browser_excluded)):
+            browser[lang] += n
+    return allc, browser
 
 
 def quiet():
@@ -267,45 +267,48 @@ class IsTestTest(unittest.TestCase):
 
 
 class CountTest(GitTestCase):
-    def test_counts_default_excludes_mobile(self):
+    def test_all_includes_mobile_browser_excludes_mobile_and_tests(self):
         r = history.count_release(self.up, 'FIREFOX_46_0_RELEASE')
-        allc, nont = expected(self.c1_files)
+        allc, browser = expected(self.c1_files)
         self.assertEqual(r['all'], allc)
-        self.assertEqual(r['nontest'], nont)
-        # spot values computed by hand: .rs 3 + 5 (test) + 4 (test) + 11 (mobilex/), mobile/ dropped
-        self.assertEqual(r['all']['rust'], 23)
-        self.assertEqual(r['nontest']['rust'], 14)
+        self.assertEqual(r['browser'], browser)
+        # spot values computed by hand. all .rs: 3 + 5 (test) + 4 (test) + 50 (mobile/) + 11 (mobilex/);
+        # browser .rs: 3 + 11 (mobile/ and the tests dropped)
+        self.assertEqual(r['all']['rust'], 73)
+        self.assertEqual(r['browser']['rust'], 14)
+        self.assertEqual(r['all']['java'], 1 + 100 + 20)   # mobile/ is in "all", its tests too
+        self.assertEqual(r['browser']['java'], 1)
         self.assertEqual(r['all']['js'], 2 + 3 + 1 + 1 + 9 + 1)  # .mjs counted, no-newline file counts 1
-        self.assertEqual(r['all']['java'], 1)
-        self.assertEqual(list(r), ['sha', 'date', 'all', 'nontest', 'artifact'])
+        self.assertEqual(r['browser']['js'], 2 + 3 + 1 + 1 + 1)
+        self.assertEqual(list(r), ['sha', 'date', 'all', 'browser'])
         self.assertEqual(list(r['all']), ['rust', 'c', 'cpp', 'h', 'js', 'html', 'py', 'java', 'asm'])
-        self.assertIsNone(r['artifact'])
+        self.assertEqual(list(r['browser']), list(r['all']))
         self.assertEqual(r['date'], '2016-04-26')
         self.assertEqual(r['sha'], git(self.up, 'rev-parse', 'FIREFOX_46_0_RELEASE^{commit}'))
 
-    def test_no_exclude_and_custom_excludes(self):
+    def test_browser_prefixes_never_change_all(self):
+        default = history.count_release(self.up, 'FIREFOX_46_0_RELEASE')
         r = history.count_release(self.up, 'FIREFOX_46_0_RELEASE', ())
-        allc, nont = expected(self.c1_files, ())
-        self.assertEqual((r['all'], r['nontest']), (allc, nont))
-        self.assertEqual(r['all']['java'], 121)
-        self.assertEqual(r['all']['rust'], 73)
+        self.assertEqual((r['all'], r['browser']), expected(self.c1_files, ()))
+        self.assertEqual(r['all'], default['all'])
+        self.assertEqual(r['browser']['java'], 101)  # mobile/ non-test code is browser code without the prefix
         r = history.count_release(self.up, 'FIREFOX_46_0_RELEASE', ('media/', 'browser/tests/'))
-        allc, nont = expected(self.c1_files, ('media/', 'browser/tests/'))
-        self.assertEqual((r['all'], r['nontest']), (allc, nont))
-        self.assertEqual(r['all']['asm'], 0)
-        self.assertEqual(r['all']['java'], 121)  # mobile/ is counted when other prefixes replace the default
+        self.assertEqual((r['all'], r['browser']), expected(self.c1_files, ('media/', 'browser/tests/')))
+        self.assertEqual(r['all'], default['all'])
+        self.assertEqual((r['all']['asm'], r['browser']['asm']), (2, 0))
 
     def test_shared_cache_gives_same_counts(self):
         cache = {}
         a = history.count_release(self.up, 'FIREFOX_46_0_RELEASE', cache=cache)
         n = len(cache)
         b = history.count_release(self.up, 'FIREFOX_47_0_BUILD1', cache=cache)
-        self.assertEqual(len(cache), n + 1)  # only the changed browser/app.rs was read (mobile/ is excluded)
+        self.assertEqual(len(cache), n + 2)  # only the changed browser/app.rs and mobile/android/m.rs were read
         self.assertEqual(b, history.count_release(self.up, 'FIREFOX_47_0_BUILD1'))
-        self.assertEqual(b['all']['rust'] - a['all']['rust'], 27)
+        self.assertEqual(b['all']['rust'] - a['all']['rust'], 27 + 20)
+        self.assertEqual(b['browser']['rust'] - a['browser']['rust'], 27)
 
 
-class CliExcludeTest(GitTestCase):
+class HeadCliTest(GitTestCase):
     def head(self, *flags):
         out = os.path.join(self.mkdtemp(), 'head.json')
         with quiet():
@@ -313,43 +316,44 @@ class CliExcludeTest(GitTestCase):
         with open(out) as f:
             return json.load(f)
 
-    def test_default_is_mobile(self):
+    def test_head_record(self):
         r = self.head()
-        self.assertEqual(r['all']['java'], 1)
+        self.assertEqual(list(r), ['sha', 'date', 'all', 'browser'])
+        self.assertEqual((r['all']['java'], r['browser']['java']), (121, 1))
         self.assertEqual(r['sha'], git(self.up, 'rev-parse', 'HEAD'))
-        self.assertNotIn('v', r)
-        self.assertNotIn('tag', r)
+        self.assertEqual(r, history.count_release(self.up, 'HEAD'))
 
-    def test_exclude_replaces_default(self):
-        self.assertEqual(self.head('--exclude', 'media/')['all']['java'], 121)
-        r = self.head('--exclude', 'media/', '--exclude', 'mobile/')
-        self.assertEqual((r['all']['java'], r['all']['asm']), (1, 0))
-
-    def test_no_exclude(self):
-        self.assertEqual(self.head('--no-exclude')['all']['java'], 121)
-
-    def test_bad_flags(self):
-        for flags in (['--exclude', ''], ['--exclude', 'a/', '--no-exclude']):
-            with self.subTest(flags=flags), quiet(), self.assertRaises(SystemExit):
-                self.head(*flags)
+    def test_exclude_flags_are_gone(self):
+        for cmd in (['head', self.up], ['backfill', self.up, os.path.join(self.mkdtemp(), 'h.json')]):
+            for flags in (['--exclude', 'mobile/'], ['--no-exclude']):
+                with self.subTest(cmd=cmd[0], flags=flags), quiet(), self.assertRaises(SystemExit) as cm:
+                    history.main(cmd + flags)
+                self.assertEqual(cm.exception.code, 2)
+        for flag in ('--with-artifact', '--artifact-deadline'):
+            with self.subTest(flag=flag), quiet(), self.assertRaises(SystemExit):
+                history.main(['build-site', self.full_history, '--repo', self.up, '--out', self.mkdtemp(), flag])
+        with quiet(), self.assertRaises(SystemExit):
+            history.main(['set-artifact', self.full_history])
 
 
 class BackfillTest(GitTestCase):
     def test_file_shape(self):
         lines = self.full_bytes.decode().split('\n')
-        self.assertEqual(lines[0], '{"method_version":1,"excluded_prefixes":["mobile/"],'
+        self.assertEqual(lines[0], '{"method_version":2,"browser_excluded_prefixes":["mobile/"],'
                                    '"header_split":{"c":0.185,"cpp":0.815},"releases":[')
         self.assertEqual(lines[-2:], [']}', ''])
         recs = [json.loads(line.rstrip(',')) for line in lines[1:-2]]
         self.assertEqual([(r['v'], r['tag']) for r in recs],
                          [(46, 'FIREFOX_46_0_RELEASE'), (47, 'FIREFOX_47_0_BUILD1'), (48, 'FIREFOX_48_0_RELEASE')])
         for r in recs:
-            self.assertEqual(list(r), ['v', 'tag', 'sha', 'date', 'all', 'nontest', 'artifact'])
-            self.assertIsNone(r['artifact'])
+            self.assertEqual(list(r), ['v', 'tag', 'sha', 'date', 'all', 'browser'])
+        self.assertNotIn(b'artifact', self.full_bytes)
+        self.assertNotIn(b'nontest', self.full_bytes)
         data = json.loads(self.full_bytes)
         self.assertEqual(data['header_split'], {'c': 0.185, 'cpp': 0.815})
         self.assertEqual(data['releases'], recs)
-        self.assertEqual(recs[1]['all']['rust'], 23 + 27)
+        self.assertEqual(recs[1]['all']['rust'], 73 + 27 + 20)   # browser/app.rs and mobile/android/m.rs grew
+        self.assertEqual(recs[1]['browser']['rust'], 14 + 27)
         self.assertEqual(recs[2]['all']['js'], recs[1]['all']['js'] + 12)
 
     def test_deterministic(self):
@@ -374,15 +378,6 @@ class BackfillTest(GitTestCase):
             history.backfill(clone, out)
         with open(out, 'rb') as f:
             self.assertEqual(f.read(), self.full_bytes)
-
-    def test_no_exclude_header(self):
-        out = os.path.join(self.mkdtemp(), 'all.json')
-        with quiet():
-            history.main(['backfill', self.up, out, '--no-exclude'])
-        with open(out) as f:
-            data = json.load(f)
-        self.assertEqual(data['excluded_prefixes'], [])
-        self.assertEqual(data['releases'][0]['all']['java'], 121)
 
 
 class AppendTest(GitTestCase):
@@ -435,9 +430,49 @@ class AppendTest(GitTestCase):
         self.assertEqual(len(text.splitlines()), len(self.full_bytes.splitlines()) + 1)
         rec = json.loads(text)['releases'][-1]
         self.assertEqual((rec['v'], rec['tag'], rec['date']), (49, 'FIREFOX_49_0_RELEASE', '2024-06-10'))
-        self.assertEqual(rec['all']['java'], 1)  # excluded_prefixes come from the file
+        self.assertEqual((rec['all']['java'], rec['browser']['java']), (121, 1))
         self.assertEqual(rec, dict(v=49, tag='FIREFOX_49_0_RELEASE',
                                    **history.count_release(self.up, 'FIREFOX_49_0_BUILD1')))
+
+    def test_browser_prefixes_come_from_the_file(self):
+        meta, recs = history.read_history(self.full_history)
+        meta['browser_excluded_prefixes'] = ['media/']
+        path = os.path.join(self.mkdtemp(), 'history.json')
+        with open(path, 'w') as f:
+            f.write(history.format_history(meta, recs[:1]))
+        with quiet():
+            self.assertEqual(history.append(path, self.shallow()), 2)
+        meta2, recs2 = history.read_history(path)
+        self.assertEqual(meta2, meta)
+        rec = recs2[-1]
+        self.assertEqual((rec['browser']['asm'], rec['browser']['java']), (0, 101))
+        self.assertEqual(rec['all'], recs[-1]['all'])
+
+    def test_other_method_version_is_refused(self):
+        clone = self.shallow()
+        meta, recs = history.read_history(self.full_history)
+        v1 = {'method_version': 1, 'excluded_prefixes': ['mobile/'], 'header_split': meta['header_split']}
+        old = [dict({k: v for k, v in r.items() if k != 'browser'}, nontest=r['browser'], artifact=None)
+               for r in recs[:1]]
+        cases = [('v1', history.format_history(v1, old)),
+                 ('v3', history.format_history(dict(meta, method_version=3), recs[:1])),
+                 ('none', history.format_history({k: v for k, v in meta.items() if k != 'method_version'}, recs[:1]))]
+        for name, text in cases:
+            path = os.path.join(self.mkdtemp(), 'history.json')
+            with open(path, 'w') as f:
+                f.write(text)
+            err = io.StringIO()
+            with self.subTest(name), mock.patch.object(history, 'remote_tags', side_effect=AssertionError('listed')), \
+                    contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as cm:
+                history.main(['append', path, '--repo', clone])
+            self.assertEqual(cm.exception.code, 1)
+            self.assertIn('method_version', err.getvalue())
+            self.assertNotIn('Traceback', err.getvalue())
+            with open(path) as f:
+                self.assertEqual(f.read(), text)   # untouched
+            with self.subTest(name + ' build-site'), quiet(), self.assertRaises(SystemExit) as cm:
+                history.main(['build-site', path, '--repo', clone, '--out', self.mkdtemp()])
+            self.assertEqual(cm.exception.code, 1)
 
 
 class ZeroDateTest(GitTestCase):
@@ -487,7 +522,7 @@ class ZeroDateTest(GitTestCase):
         path = os.path.join(d, 'history.json')
         prev = dict(v=122, tag='FIREFOX_122_0_RELEASE', **history.count_release(up, 'HEAD~1'))
         with open(path, 'w') as f:
-            f.write(history.format_history(history.default_meta(history.DEFAULT_EXCLUDES), [prev]))
+            f.write(history.format_history(history.default_meta(), [prev]))
         with quiet():
             self.assertEqual(history.append(path, clone), 1)
         rec = history.read_history(path)[1][-1]
@@ -534,15 +569,23 @@ class BuildSiteTest(GitTestCase):
         with open(path) as f:
             data = json.load(f)
         hist = json.loads(self.full_bytes)
+        self.assertEqual(list(data), ['meta_date', 'title_date', 'lang', 'method_version', 'browser_excluded_prefixes',
+                                      'header_split', 'releases', 'head'])
+        with open(path) as f:
+            text = f.read()
+        self.assertNotIn('artifact', text)
+        self.assertNotIn('nontest', text)
         self.assertEqual(data['meta_date'], '2026-10-05T00:55:25+00:00')
         self.assertEqual(data['title_date'], 'Oct 2026')
         self.assertEqual(data['releases'], hist['releases'])
-        for k in ('method_version', 'excluded_prefixes', 'header_split'):
+        for k in ('method_version', 'browser_excluded_prefixes', 'header_split'):
             self.assertEqual(data[k], hist[k])
+        self.assertEqual((data['method_version'], data['browser_excluded_prefixes']), (2, ['mobile/']))
         head = data['head']
-        self.assertEqual(list(head), ['sha', 'date', 'all', 'nontest', 'artifact'])
+        self.assertEqual(list(head), ['sha', 'date', 'all', 'browser'])
         self.assertEqual(head['sha'], git(self.up, 'rev-parse', 'HEAD'))
-        self.assertEqual(head['all'], history.count_release(self.up, 'HEAD')['all'])
+        self.assertEqual(head, history.count_release(self.up, 'HEAD'))
+        self.assertEqual(head['date'], '2024-06-10')
         a = head['all']
         hc = round(a['h'] * 0.185)
         self.assertEqual(data['lang'], [
@@ -552,6 +595,8 @@ class BuildSiteTest(GitTestCase):
             {'name': 'Java', 'loc': a['java']}, {'name': 'Assembly', 'loc': a['asm']}])
         self.assertEqual(sum(x['loc'] for x in data['lang']), sum(a.values()))
         self.assertEqual(a['h'], 10)
+        # the pie is "all", so mobile/ is in it: Java 1 + 100 + 20, Rust 73 + 27 + 20 + 5 (browser/later.rs)
+        self.assertEqual((data['lang'][6]['loc'], data['lang'][0]['loc']), (121, 125))
         self.assertEqual((data['lang'][1]['loc'], data['lang'][2]['loc']), (2 + 2, 13 + 10 - 2))
 
     def test_cli_uses_current_time(self):
@@ -564,149 +609,6 @@ class BuildSiteTest(GitTestCase):
         self.assertTrue(data['meta_date'].endswith('+00:00'))
         self.assertLess(abs((datetime.fromisoformat(data['meta_date']) - now).total_seconds()), 300)
         self.assertEqual(len(data['lang']), 8)
-
-
-def fake_block(sha, rust=7, kind='symbols'):
-    blk = dict.fromkeys(history.KEYS, 0)
-    blk.update(rust=rust, cpp=20, h=10, js=5, sha=sha,
-               source={'kind': kind, 'libxul_debug_id': 'ABC0', 'modules': 2, 'paths': 30})
-    return blk
-
-
-class BuildSiteArtifactTest(GitTestCase):
-    """build-site --with-artifact: head.artifact is the block when it can be computed, else null; never an error."""
-
-    def build(self, *extra):
-        out = self.mkdtemp()
-        err = io.StringIO()
-        with contextlib.redirect_stderr(err):
-            code = history.main(['build-site', self.full_history, '--repo', self.up, '--out', out] + list(extra))
-        with open(os.path.join(out, 'data.json')) as f:
-            return code, json.load(f), err.getvalue()
-
-    def test_block_is_stored_in_head(self):
-        blk = fake_block('b' * 40)
-        seen = {}
-
-        def fake_try_head(repo, **kw):
-            seen.update(kw, repo=repo)
-            return blk
-        with mock.patch.object(artifact, 'try_head', fake_try_head):
-            code, data, err = self.build('--with-artifact', '--artifact-index', 'some.index', '--artifact-deadline', '60')
-        self.assertEqual(code, 0)
-        self.assertEqual(data['head']['artifact'], blk)
-        self.assertNotEqual(data['head']['artifact']['sha'], data['head']['sha'])   # the build's commit, not head's
-        self.assertEqual(seen['repo'], self.up)
-        self.assertEqual(seen['index'], 'some.index')
-        self.assertEqual(seen['excludes'], ('mobile/',))
-        self.assertLess(seen['ctx'].deadline - seen['ctx'].t0, 61)
-        self.assertIn('head artifact: build commit bbbbbbbbbbbb', err)
-        hist = json.loads(self.full_bytes)
-        self.assertEqual(data['releases'], hist['releases'])
-
-    def test_unavailable_gives_null(self):
-        # the real try_head against an index namespace that does not exist: a 404, no network beyond that
-        urls = []
-
-        def web(req, timeout=None):
-            urls.append(req.full_url)
-            raise artifact.urllib.error.HTTPError(req.full_url, 404, 'Not Found', {}, None)
-        real = artifact.Context
-        with mock.patch.object(artifact, 'Context', lambda deadline: real(deadline, opener=web, sleep=lambda s: None)):
-            code, data, err = self.build('--with-artifact', '--artifact-index', 'no.such.index')
-        self.assertEqual(urls, [artifact.INDEX_URL.format(ns='no.such.index')])
-        self.assertEqual(code, 0)
-        self.assertIsNone(data['head']['artifact'])
-        self.assertIn('HTTP 404', err)
-        self.assertIn('head artifact: none this run', err)
-
-    def test_bug_gives_null_with_traceback(self):
-        with mock.patch.object(artifact, 'head_artifact', side_effect=KeyError('bug')):
-            code, data, err = self.build('--with-artifact')
-        self.assertEqual(code, 0)
-        self.assertIsNone(data['head']['artifact'])
-        self.assertIn('Traceback', err)
-        with mock.patch.object(artifact, 'Context', side_effect=RuntimeError('bug outside try_head')):
-            code, data, err = self.build('--with-artifact')
-        self.assertEqual(code, 0)
-        self.assertIsNone(data['head']['artifact'])
-        self.assertIn('bug outside try_head', err)
-
-    def test_without_the_flag_no_artifact_is_computed(self):
-        with mock.patch.object(artifact, 'try_head', side_effect=AssertionError('must not be called')):
-            code, data, err = self.build()
-        self.assertEqual(code, 0)
-        self.assertIsNone(data['head']['artifact'])
-
-
-class SetArtifactTest(GitTestCase):
-    def copy(self):
-        path = os.path.join(self.mkdtemp(), 'history.json')
-        shutil.copy(self.full_history, path)
-        return path
-
-    def run_cli(self, path, v=48):
-        err = io.StringIO()
-        with contextlib.redirect_stderr(err):
-            try:
-                code = history.main(['set-artifact', path, '--v', str(v), '--symbols', 'https://x/s.zip',
-                                     '--package', 'https://x/p.tar.xz', '--repo', self.up])
-            except SystemExit as e:   # HistoryError: the message and exit status 1
-                code = e.code
-        return code, err.getvalue()
-
-    def test_sets_one_record_and_changes_one_line(self):
-        path = self.copy()
-        sha48 = json.loads(self.full_bytes)['releases'][-1]['sha']
-        calls = []
-
-        def fake(symbols, package, repo, sha=None, source=None, excludes=None, **kw):
-            calls.append((symbols, package, repo, sha, source, excludes))
-            return fake_block(sha, kind=source['kind'])
-        with mock.patch.object(artifact, 'artifact_from_build', fake):
-            code, err = self.run_cli(path)
-        self.assertEqual(code, 0)
-        self.assertEqual(calls, [('https://x/s.zip', 'https://x/p.tar.xz', self.up, sha48,
-                                  {'kind': 'candidates', 'symbols': 'https://x/s.zip', 'package': 'https://x/p.tar.xz'},
-                                  ('mobile/',))])
-        with open(path, 'rb') as f:
-            after = f.read()
-        old, new = self.full_bytes.decode().split('\n'), after.decode().split('\n')
-        self.assertEqual(len(old), len(new))
-        changed = [i for i, (a, b) in enumerate(zip(old, new)) if a != b]
-        self.assertEqual(len(changed), 1)
-        rec = json.loads(new[changed[0]].rstrip(','))
-        self.assertEqual(rec['v'], 48)
-        self.assertEqual(rec['artifact'], fake_block(sha48, kind='candidates'))
-        self.assertEqual(list(rec), ['v', 'tag', 'sha', 'date', 'all', 'nontest', 'artifact'])
-        # a stored artifact is never recomputed
-        with mock.patch.object(artifact, 'artifact_from_build', side_effect=AssertionError('must not be called')):
-            code, err = self.run_cli(path)
-        self.assertEqual(code, 1)
-        self.assertIn('already has an artifact', err)
-        with open(path, 'rb') as f:
-            self.assertEqual(f.read(), after)
-
-    def test_unavailable_leaves_the_file_and_exits_3(self):
-        path = self.copy()
-        with mock.patch.object(artifact, 'artifact_from_build',
-                               side_effect=artifact.ArtifactUnavailable('symbols: FILE records name x, expected y')):
-            code, err = self.run_cli(path)
-        self.assertEqual(code, history.EXIT_UNAVAILABLE)
-        self.assertIn('left unchanged', err)
-        with open(path, 'rb') as f:
-            self.assertEqual(f.read(), self.full_bytes)
-
-    def test_unknown_release_and_foreign_layout(self):
-        path = self.copy()
-        code, err = self.run_cli(path, v=99)
-        self.assertEqual(code, 1)
-        self.assertIn('release 99 is not in', err)
-        with open(path, 'w') as f:
-            json.dump(json.loads(self.full_bytes), f, indent=1)
-        code, err = self.run_cli(path)
-        self.assertEqual(code, 1)
-        self.assertIn('refusing to rewrite', err)
 
 
 if __name__ == '__main__':

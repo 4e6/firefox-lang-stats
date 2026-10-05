@@ -9,25 +9,19 @@ Subcommands:
   backfill REPO OUT        count every major release tagged in REPO and write a new history file
   append HISTORY --repo R  add the majors that are missing from HISTORY: list the remote tags of R with
                            `git ls-remote --tags origin`, fetch each missing tag with `git fetch --depth 1` and count it
-                           (works on the workflow's depth-1 checkout, which has no tags; never lists local tags)
-  head REPO                count HEAD of a checkout and print {"sha","date","all","nontest","artifact"}
-  build-site HISTORY --repo R --out DIR [--with-artifact]
+                           (works on the workflow's depth-1 checkout, which has no tags; never lists local tags).
+                           Refuses a file whose method_version differs from this code's METHOD_VERSION
+  head REPO                count HEAD of a checkout and print {"sha","date","all","browser"}
+  build-site HISTORY --repo R --out DIR
                            write DIR/data.json: the history, the head point of R and the legacy fields of the old
-                           pie chart (meta_date, title_date, lang). --with-artifact also computes head.artifact, the
-                           browser artifact of the newest finished mozilla-central linux64-opt build (dev/artifact.py);
-                           when it cannot be computed it is null and the command still succeeds
-  set-artifact HISTORY --v N --symbols URL --package URL --repo R
-                           compute the browser artifact of release N from its build's crashreporter-symbols.zip and
-                           package (for example Mozilla's release candidates) and store it in that release's record,
-                           the only change to the file. Refuses a release that already has one; exit status 3 (file
-                           untouched) if the artifact cannot be computed. For release N the build is the last
-                           build<B> directory of https://archive.mozilla.org/pub/firefox/candidates/N.0-candidates/
-                           and its linux-x86_64/en-US/ files firefox-N.0.crashreporter-symbols.zip and
-                           firefox-N.0.tar.xz (.tar.bz2 for older releases)
+                           pie chart (meta_date, title_date, lang)
 
-`backfill` and `head` skip paths under `mobile/` by default (desktop browser only). `--exclude PREFIX` (repeatable)
-replaces that default, `--no-exclude` counts everything. `append` and `build-site` take the prefixes from the
-history file's `excluded_prefixes`, so new records always match the old ones.
+Two views of every commit (METHOD_VERSION 2):
+  "all"      every tracked file whose extension is in the language set, no exclusions (mobile/ included)
+  "browser"  "all" minus the paths under a prefix of `browser_excluded_prefixes` (mobile/) and minus test paths
+             (see is_test())
+`backfill` and `head` use BROWSER_EXCLUDED_PREFIXES; `append` and `build-site` take the prefixes from the history
+file's `browser_excluded_prefixes`, so new records always match the old ones.
 
 Release set: FIREFOX_<n>_0_RELEASE for n = 46 up to the newest major with a _RELEASE tag. A major without a _RELEASE
 tag inside that range is counted at FIREFOX_<n>_0_BUILD1 and stored under v = n (only 125 today). A newer major that
@@ -35,8 +29,8 @@ has only BUILD tags (still in the release process) is not added until its _RELEA
 
 Languages (by extension; C/C++ headers are kept apart as `h` and split at display time with `header_split`):
 rust .rs | c .c | cpp .cc .cpp .cxx .hxx | h .h | js .jsm .jsx .js .mjs | html .htm .html .xhtml .xht .css |
-py .py | java .java | asm .asm. Changing the set or the test rules means bumping METHOD_VERSION and regenerating.
-"all" is every tracked file; "nontest" drops test paths (see is_test()).
+py .py | java .java | asm .asm. Changing the set, the test rules or the views means bumping METHOD_VERSION and
+regenerating.
 
 How to regenerate data/history.json from scratch (about 10 minutes and 3.5 GB of disk; run it locally, not in CI):
 
@@ -71,9 +65,10 @@ import threading
 import time
 from datetime import datetime, timezone
 
-METHOD_VERSION = 1
+METHOD_VERSION = 2
 FIRST_MAJOR = 46
-DEFAULT_EXCLUDES = ('mobile/',)
+# path prefixes left out of the "browser" view (never out of "all")
+BROWSER_EXCLUDED_PREFIXES = ('mobile/',)
 # Share of `.h` lines given to C and C++ at display time (by location about 81.5% of headers are C++).
 HEADER_SPLIT = {'c': 0.185, 'cpp': 0.815}
 
@@ -92,7 +87,7 @@ LEGACY_LANG = [('Rust', 'rust'), ('C', 'c'), ('C++', 'cpp'), ('JavaScript', 'js'
                ('Python', 'py'), ('Java', 'java'), ('Assembly', 'asm')]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-# directory names that mark test code (any path component); see docs/reference/test-paths/README.md
+# directory names that mark test code (any path component); the rules are described in docs/methodology.md
 TESTDIRS = {'test', 'tests', 'gtest', 'gtests', 'mochitest', 'mochitests', 'xpcshell', 'reftest', 'reftests',
             'crashtest', 'crashtests', '__tests__', 'androidTest', 'test262', 'unittests', 'googletest', 'testdata',
             'fixtures', 'browser_tests', 'jsapi-tests', 'jit-test'}
@@ -122,7 +117,7 @@ def log(msg):
 
 
 def is_test(path):
-    """True if the repository path is test code (rules in docs/reference/test-paths/README.md)."""
+    """True if the repository path is test code (rules described in docs/methodology.md)."""
     parts = path.split('/')
     if parts[0] == 'testing' or path.startswith(TEST_PREFIXES):
         return True
@@ -183,9 +178,8 @@ def remote_tags(repo, remote='origin'):
 # counting
 
 
-def tree(repo, rev, excludes=()):
-    """Yield (blob id, path, language) for the counted files of a commit, skipping paths under `excludes`."""
-    excludes = tuple(excludes)
+def tree(repo, rev):
+    """Yield (blob id, path, language) for every counted file of a commit (no exclusions)."""
     out = git(repo, 'ls-tree', '-r', '-z', rev)
     for rec in out.split(b'\0'):
         if not rec:
@@ -194,7 +188,7 @@ def tree(repo, rev, excludes=()):
         p = path.decode('utf8', 'replace')
         m = EXT_RE.search(p)
         lang = EXT2LANG.get(m.group(1)) if m else None
-        if lang and not (excludes and p.startswith(excludes)):
+        if lang:
             mode, typ, oid = meta.split()
             if typ == b'blob':
                 yield oid.decode(), p, lang
@@ -300,16 +294,18 @@ def commit_date(repo, sha, limit=100):
                              'in %s has a real one; fetch more history (e.g. git fetch --deepen 10)' % (sha, limit, repo))
 
 
-def count_release(repo, rev, excludes=DEFAULT_EXCLUDES, cache=None, fetch=True):
+def count_release(repo, rev, browser_excluded=BROWSER_EXCLUDED_PREFIXES, cache=None, fetch=True):
     """Count one commit (a release tag or HEAD) of any clone: blobless, depth 1 or full.
 
-    Returns {"sha","date","all","nontest","artifact": None}. `cache` maps blob id -> line count and may be shared
+    Returns {"sha","date","all","browser"}: "all" counts every file, "browser" leaves out the paths under a prefix of
+    `browser_excluded` and the test paths. `cache` maps blob id -> line count and may be shared
     between calls so that a blob is read once across releases. On a partial clone, missing blobs are fetched in one
     batch first (unless fetch=False)."""
     if cache is None:
         cache = {}
+    browser_excluded = tuple(browser_excluded)
     sha = resolve_commit(repo, rev)
-    entries = list(tree(repo, sha, excludes))
+    entries = list(tree(repo, sha))
     todo = sorted({oid for oid, _, _ in entries if oid not in cache})
     if todo:
         lines, missing = count_lines(repo, todo)
@@ -323,13 +319,13 @@ def count_release(repo, rev, excludes=DEFAULT_EXCLUDES, cache=None, fetch=True):
             lines.update(more)
         cache.update(lines)
     allc = dict.fromkeys(KEYS, 0)
-    nont = dict.fromkeys(KEYS, 0)
+    browser = dict.fromkeys(KEYS, 0)
     for oid, path, lang in entries:
         n = cache[oid]
         allc[lang] += n
-        if not is_test(path):
-            nont[lang] += n
-    return {'sha': sha, 'date': commit_date(repo, sha), 'all': allc, 'nontest': nont, 'artifact': None}
+        if not (browser_excluded and path.startswith(browser_excluded)) and not is_test(path):
+            browser[lang] += n
+    return {'sha': sha, 'date': commit_date(repo, sha), 'all': allc, 'browser': browser}
 
 
 def release_record(v, tag, counted):
@@ -344,8 +340,9 @@ def dumps(obj):
     return json.dumps(obj, separators=(',', ':'))
 
 
-def default_meta(excludes):
-    return {'method_version': METHOD_VERSION, 'excluded_prefixes': list(excludes), 'header_split': dict(HEADER_SPLIT)}
+def default_meta(browser_excluded=BROWSER_EXCLUDED_PREFIXES):
+    return {'method_version': METHOD_VERSION, 'browser_excluded_prefixes': list(browser_excluded),
+            'header_split': dict(HEADER_SPLIT)}
 
 
 def format_history(meta, records, extra=None):
@@ -377,6 +374,17 @@ def read_history(path):
     return data, records
 
 
+def read_current_history(path):
+    """read_history() of a file written by this METHOD_VERSION; HistoryError (file untouched) for any other."""
+    meta, records = read_history(path)
+    if meta.get('method_version') != METHOD_VERSION:
+        raise HistoryError('%s has method_version %s, this code writes %d; regenerate it with `backfill` instead of '
+                           'mixing methods in one file' % (path, json.dumps(meta.get('method_version')), METHOD_VERSION))
+    if not isinstance(meta.get('browser_excluded_prefixes'), list):
+        raise HistoryError('%s has no browser_excluded_prefixes list' % path)
+    return meta, records
+
+
 # ---------------------------------------------------------------------------------------------------------------
 # legacy fields of the old pie chart
 
@@ -397,16 +405,15 @@ def legacy_fields(head_all, header_split, now):
 # subcommands
 
 
-def backfill(repo, out, excludes=DEFAULT_EXCLUDES, first=FIRST_MAJOR, streams=4):
+def backfill(repo, out, first=FIRST_MAJOR, streams=4):
     t0 = time.time()
-    excludes = tuple(excludes)
     rel = releases(repo, first)
     if not rel:
         raise SystemExit('no FIREFOX_<n>_0_RELEASE tags in %s; fetch the release tags first' % repo)
     if promisor_remote(repo):
         need = set()
         for v, tag in rel:
-            need.update(oid for oid, _, _ in tree(repo, tag, excludes))
+            need.update(oid for oid, _, _ in tree(repo, tag))
         missing = missing_blobs(repo, sorted(need))
         log('%d distinct counted files, %d to fetch, %.0fs' % (len(need), len(missing), time.time() - t0))
         del need
@@ -415,16 +422,18 @@ def backfill(repo, out, excludes=DEFAULT_EXCLUDES, first=FIRST_MAJOR, streams=4)
     t1 = time.time()
     cache, records = {}, []
     for v, tag in rel:
-        records.append(release_record(v, tag, count_release(repo, tag, excludes, cache)))
+        records.append(release_record(v, tag, count_release(repo, tag, BROWSER_EXCLUDED_PREFIXES, cache)))
     log('counted %d distinct files for %d releases, %.0fs' % (len(cache), len(records), time.time() - t1))
-    write_atomic(out, format_history(default_meta(excludes), records))
+    write_atomic(out, format_history(default_meta(), records))
     log('wrote %d releases to %s, %.0fs total' % (len(records), out, time.time() - t0))
 
 
 def append(history, repo, remote='origin'):
-    """Add the majors missing from `history`; returns how many were added. Leaves the file untouched if none."""
-    meta, records = read_history(history)
-    excludes = tuple(meta.get('excluded_prefixes', ()))
+    """Add the majors missing from `history`; returns how many were added. Leaves the file untouched if none.
+
+    Refuses (HistoryError, file untouched) a file written by another METHOD_VERSION."""
+    meta, records = read_current_history(history)
+    browser_excluded = tuple(meta['browser_excluded_prefixes'])
     have = {r['v'] for r in records}
     first = min(have, default=FIRST_MAJOR)
     todo = [(v, tag) for v, tag in pick_majors(remote_tags(repo, remote), first) if v not in have]
@@ -436,62 +445,25 @@ def append(history, repo, remote='origin'):
         t0 = time.time()
         git(repo, 'fetch', '-q', '--no-tags', '--depth', '1', remote, 'tag', tag)
         try:
-            counted = count_release(repo, tag, excludes, cache)
+            counted = count_release(repo, tag, browser_excluded, cache)
         except ZeroTimestampError:
             # the tagged commit has a zero timestamp (like 123): fetch a few parents for the date and count again
             # (the blobs are cached, so the second count only lists the tree)
             log('%s has a zero timestamp; fetching 10 more commits for its date' % tag)
             git(repo, 'fetch', '-q', '--no-tags', '--deepen', '10', remote, 'tag', tag)
-            counted = count_release(repo, tag, excludes, cache)
+            counted = count_release(repo, tag, browser_excluded, cache)
         records.append(release_record(v, tag, counted))
         write_atomic(history, format_history(meta, records))
         log('added %d (%s), %.0fs' % (v, tag, time.time() - t0))
     return len(todo)
 
 
-EXIT_UNAVAILABLE = 3   # set-artifact: the artifact cannot be computed (same status as dev/artifact.py)
-
-
-def _artifact_module():
-    """dev/artifact.py, imported on first use (it imports this module, so not at the top)."""
-    import artifact
-    return artifact
-
-
-def head_artifact(repo, excludes=DEFAULT_EXCLUDES, index=None, deadline=None):
-    """The `artifact` block of the newest finished mozilla-central build, or None. Never raises (except
-    KeyboardInterrupt): every failure, a bug included, is logged and gives None, so the weekly job carries on."""
-    t0 = time.time()
-    try:
-        artifact = _artifact_module()
-        ctx = artifact.Context(deadline or artifact.DEADLINE)
-        kw = {'index': index} if index else {}
-        block = artifact.try_head(repo, excludes=excludes, ctx=ctx, **kw)
-    except Exception as e:
-        import traceback
-        log('head artifact: failed (a bug): %s: %s\n%s' % (type(e).__name__, e, traceback.format_exc().rstrip()))
-        block, ctx = None, None
-    if block is None:
-        log('head artifact: none this run (reason above); head.artifact is null, the build goes on (%.0fs)'
-            % (time.time() - t0))
-        return None
-    total = sum(block[k] for k in KEYS)
-    log('head artifact: build commit %s, %d lines, Rust %.2f%%; seconds %s, bytes %s' % (
-        block['sha'][:12], total, 100.0 * block['rust'] / max(total, 1), json.dumps(ctx.stats.get('seconds')),
-        json.dumps(ctx.stats.get('bytes'))))
-    return block
-
-
-def build_site(history, repo, out_dir, now=None, with_artifact=False, artifact_index=None, artifact_deadline=None):
+def build_site(history, repo, out_dir, now=None):
     """Write out_dir/data.json: legacy fields, the history header and releases, and the head point of `repo`.
 
-    with_artifact: also compute head.artifact (null when it cannot be computed; never an error). Its `sha` is the
-    commit of the build it was counted at, which is usually a little older than head.sha."""
-    meta, records = read_history(history)
-    head = count_release(repo, 'HEAD', meta.get('excluded_prefixes', ()))
-    if with_artifact:
-        head['artifact'] = head_artifact(repo, tuple(meta.get('excluded_prefixes', ())), artifact_index,
-                                         artifact_deadline)
+    Refuses (HistoryError) a history file written by another METHOD_VERSION: the page reads this version's keys."""
+    meta, records = read_current_history(history)
+    head = count_release(repo, 'HEAD', meta['browser_excluded_prefixes'])
     now = now or datetime.now(timezone.utc).replace(microsecond=0)
     header = dict(legacy_fields(head['all'], meta.get('header_split', HEADER_SPLIT), now), **meta)
     path = os.path.join(out_dir, 'data.json')
@@ -500,62 +472,16 @@ def build_site(history, repo, out_dir, now=None, with_artifact=False, artifact_i
     return path
 
 
-def set_artifact(history, v, symbols, package, repo, kind='candidates'):
-    """Store the browser artifact of release `v` in `history`, computed from its build's symbols zip and package.
-
-    The artifact is a property of the release: computed once, never overwritten. The FILE records of the build must
-    name the release's own commit (the record's sha). Only that record changes: the file is rewritten with the same
-    writer, and refused if it is not already in that exact layout. Raises artifact.ArtifactUnavailable (file
-    untouched) if the artifact cannot be computed, HistoryError for a usage problem."""
-    with open(history, encoding='utf-8') as f:
-        before = f.read()
-    meta, records = read_history(history)
-    if format_history(meta, records) != before:
-        raise HistoryError('%s is not in the layout format_history() writes; refusing to rewrite it' % history)
-    rec = next((r for r in records if r['v'] == v), None)
-    if rec is None:
-        raise HistoryError('release %d is not in %s' % (v, history))
-    if rec.get('artifact') is not None:
-        raise HistoryError('release %d already has an artifact (a stored artifact is never recomputed)' % v)
-    artifact = _artifact_module()
-    block = artifact.artifact_from_build(symbols, package, repo, sha=rec['sha'],
-                                         source={'kind': kind, 'symbols': symbols, 'package': package},
-                                         excludes=tuple(meta.get('excluded_prefixes', ())))
-    rec['artifact'] = block
-    write_atomic(history, format_history(meta, records))
-    total = sum(block[k] for k in KEYS)
-    log('release %d: artifact at %s, %d lines, Rust %.2f%%, %d paths' % (
-        v, block['sha'][:12], total, 100.0 * block['rust'] / max(total, 1), block['source']['paths']))
-    return block
-
-
-def resolve_excludes(a, parser):
-    if a.no_exclude:
-        return ()
-    if a.exclude is None:
-        return DEFAULT_EXCLUDES
-    if any(not e for e in a.exclude):
-        parser.error("--exclude '' would exclude every path; use --no-exclude to count everything")
-    return tuple(a.exclude)
-
-
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest='cmd', metavar='COMMAND')
     sub.required = True
-
-    def add_excludes(p):
-        g = p.add_mutually_exclusive_group()
-        g.add_argument('--exclude', action='append', default=None, metavar='PREFIX',
-                       help='skip paths under PREFIX; repeatable; replaces the default (mobile/)')
-        g.add_argument('--no-exclude', action='store_true', help='count every path, including mobile/')
 
     p = sub.add_parser('backfill', help='count every major release tagged in REPO into a new history file')
     p.add_argument('repo')
     p.add_argument('out')
     p.add_argument('--first', type=int, default=FIRST_MAJOR, help='first major (default %(default)s)')
     p.add_argument('--streams', type=int, default=4, help='parallel blob fetches (default %(default)s)')
-    add_excludes(p)
 
     p = sub.add_parser('append', help='add missing majors to HISTORY (lists remote tags, fetches each at depth 1)')
     p.add_argument('history')
@@ -565,59 +491,34 @@ def main(argv=None):
     p = sub.add_parser('head', help='count HEAD of REPO and print the record')
     p.add_argument('repo')
     p.add_argument('--out', help='write the record here instead of stdout')
-    add_excludes(p)
 
     p = sub.add_parser('build-site', help='write OUT/data.json from HISTORY and the head of REPO')
     p.add_argument('history')
     p.add_argument('--repo', required=True)
     p.add_argument('--out', required=True, help='output directory (e.g. build)')
-    p.add_argument('--with-artifact', action='store_true',
-                   help='also compute head.artifact (null, not an error, when it cannot be computed)')
-    p.add_argument('--artifact-index', metavar='NS',
-                   help='Taskcluster index namespace of the head build (default: mozilla-central linux64-opt)')
-    p.add_argument('--artifact-deadline', type=float, metavar='SECONDS',
-                   help='time limit for the head artifact (default: dev/artifact.py\'s, 20 minutes)')
-
-    p = sub.add_parser('set-artifact', help='store the browser artifact of release V, computed from its build')
-    p.add_argument('history')
-    p.add_argument('--v', type=int, required=True, help='major release number')
-    p.add_argument('--symbols', required=True, help='URL of the build\'s crashreporter-symbols.zip')
-    p.add_argument('--package', required=True, help='URL of the build\'s package (.tar.xz or .tar.bz2)')
-    p.add_argument('--repo', required=True, help='a clone of mozilla-firefox/firefox (only read)')
-    p.add_argument('--kind', default='candidates', help='source.kind to store (default %(default)s)')
 
     a = ap.parse_args(argv)
     try:
-        run(a, ap)
+        run(a)
     except HistoryError as e:
         ap.exit(1, '%s: error: %s\n' % (ap.prog, e))
-    except Exception as e:
-        if a.cmd == 'set-artifact' and isinstance(e, _artifact_module().ArtifactUnavailable):
-            log('artifact unavailable: %s; %s left unchanged' % (e, a.history))
-            return EXIT_UNAVAILABLE
-        raise
     return 0
 
 
-def run(a, ap):
+def run(a):
     if a.cmd == 'backfill':
-        backfill(a.repo, a.out, resolve_excludes(a, ap), a.first, a.streams)
+        backfill(a.repo, a.out, a.first, a.streams)
     elif a.cmd == 'append':
         append(a.history, a.repo, a.remote)
     elif a.cmd == 'head':
-        text = dumps(count_release(a.repo, 'HEAD', resolve_excludes(a, ap))) + '\n'
+        text = dumps(count_release(a.repo, 'HEAD')) + '\n'
         if a.out:
             write_atomic(a.out, text)
         else:
             sys.stdout.write(text)
     elif a.cmd == 'build-site':
-        build_site(a.history, a.repo, a.out, with_artifact=a.with_artifact, artifact_index=a.artifact_index,
-                   artifact_deadline=a.artifact_deadline)
-    elif a.cmd == 'set-artifact':
-        set_artifact(a.history, a.v, a.symbols, a.package, a.repo, a.kind)
+        build_site(a.history, a.repo, a.out)
 
 
 if __name__ == '__main__':
-    # dev/artifact.py imports `history`: let it get this module, not a second copy (one HistoryError class)
-    sys.modules.setdefault('history', sys.modules[__name__])
     sys.exit(main())

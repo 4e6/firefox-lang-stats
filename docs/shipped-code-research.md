@@ -14,6 +14,11 @@ Use **Mozilla's own CI build outputs** to learn which source files ship, then co
 at the same commit. We do not build Firefox ourselves. The shipped-code series is added **next to** the existing
 series, not in place of it.
 
+Presentation: four views on one page, in this order: **Composition**, **Small multiples**, **Language share**, and
+**Pie + scrubber**, over the same three views of the data (all files, non-test, browser artifact), with a share/lines scale switch
+where it applies (Language share always draws all three views, and Pie + scrubber has no scale switch). See Storage
+design.
+
 ## Why the current chart overstates things
 
 The script counts every tracked file with `git ls-files | wc -l`.
@@ -162,7 +167,7 @@ regenerates it or it is committed to `main` (or excluded from the clean). Pick o
 **Data to store.** Results are tiny: one record per version and view is about 0.25 KB (about 0.5 KB per version for two views), so the 111-version series with
 the "all" and "non-test" views is 56 KB pretty-printed, and 505 versions would be about 250 KB. A per-file line-count
 cache (1.48M files x about 24 bytes) would be about 35 MB, but it is not needed: recomputing the whole history takes
-about 8-9 minutes for the majors, so regenerating it is an option (see Design options) and only the output JSON needs storing (for example on `gh-pages`).
+about 8-9 minutes for the majors, so regenerating it is an option (see Design options) and only the output JSON needs storing (see Storage design).
 
 **Real series (measured, same method, 111 majors).** Language set as the script plus `.mjs`; non-test uses a
 re-implementation of the path rules above in Python (it gives 21.35% for 157, against 21.4-21.45% from the git
@@ -241,6 +246,125 @@ and 140.0 (404).
 | 505 releases, tracked, incremental | about 12 min (extrapolated) | about 3.5 GB, memory needs streaming | about 250 KB |
 | 111 majors, shipped | about 30 min of network (estimate) plus engineering | about 8-11 GB | about 1-2 MB per module if lists are kept |
 
+## Storage design
+
+The history page has four views, in this order. An interactive preview with sample data was built for them; the
+"Browser artifact" series in it is made up. In this document "browser artifact" means the same thing as "shipped"
+above: the lines of the files that end up in the desktop browser.
+
+| # | View | What the reader can switch | What it reads |
+|---|---|---|---|
+| 1 | **Composition** | view (all files, non-test, browser artifact), scale (share or lines), click a language to isolate it | every language, every release |
+| 2 | **Small multiples** | view, scale (share or lines) | every language, every release |
+| 3 | **Language share** | language, scale (share or lines); always draws all three views as lines | one language, every release, all three views (in share mode it also needs the total, which is every language) |
+| 4 | **Pie + scrubber** | view, a release slider with Play; shows change against the previous release | every language, one release (and its predecessor) |
+
+All four views are drawn from the same record: **lines per language, per release, per view**. Shares, totals and
+the change against the previous release are computed in the browser, so none of them is stored. The only
+difference between views is how much of the file they read.
+
+### What is stored, and where
+
+**One append-only file in the repository, `data/history.json`, committed to `main`.** One release per line, so a
+new release is a one-line diff and git history stays readable. Releases are immutable, so a stored point never
+changes unless the counting method changes (see below). Proposed record (illustrative numbers based on the Firefox 157
+measurements; in the real file `c` and `cpp` exclude headers, which are the separate `h` column, and the `artifact`
+block holds placeholders):
+
+```json
+{"method_version":1,"releases":[
+{"v":157,"tag":"FIREFOX_157_0_RELEASE","sha":"fdd757a2e09c9471cddf383e64e631e4ce178499","date":"2026-09-24",
+ "all":    {"rust":6172836,"c":5684104,"cpp":11190622,"h":1500000,"js":16229210,"html":6839860,"py":2159226,"java":147346,"asm":295963},
+ "nontest":{"rust":5616315,"c":5509719,"cpp":10268555,"h":1400000,"js":2997940,"html":197874,"py":1281628,"java":137247,"asm":295548},
+ "artifact":{"platform":"linux-x86_64","sha":"fdd757a2e09c9471cddf383e64e631e4ce178499","rust":0,"c":0,"cpp":0,"h":0,"js":0,"html":0,"py":0,"java":0,"asm":0}}
+]}
+```
+
+- **Scope:** `all` and `nontest` should exclude `mobile/`, matching the desktop-only decision. The preview and the
+  measured series so far include it (Java is 147k lines at 157, against about 56k outside `mobile/`), so the first
+  backfill must apply the exclusion; Rust is 12.7% / 21.4% with it and 12.8% / 21.5% without it. Java and Assembly stay
+  separate columns because the views show them separately, even though Java is small without `mobile/`.
+- **Languages:** Rust, C, C++, JavaScript (including `.mjs`), HTML/CSS, Python, Java and Assembly. Java and Assembly are
+  separate columns because the views show them separately.
+- **`artifact` is `null`** until the browser-artifact collector exists, and for releases it cannot cover (46, 48, 130,
+  131.0, 45.0esr and 45.2.0esr if all releases are stored, and releases 131.0.2 to 143 if their symbol file lists are not
+  extracted in time, see Suggested order). Until the collector exists, the page hides the browser-artifact option. The page must handle missing values in the middle of the series in all four views: in the preview only Language share
+  does, and the other three assume gaps are at the start (stacks drop to zero, small multiples break the line, and the pie's
+  "change against the previous release" would compute against nothing). Its `sha` records which commit
+  the file list was counted at. `platform` is only needed if more than one platform is ever stored (Open decision 1).
+- **Headers (`h`) are stored raw** and split between C and C++ when the page is drawn, using a ratio kept as metadata in
+  the file (`"header_split":{"c":0.185,"cpp":0.815}`). The current 2/3 to 1/3 split is out of date (by location about
+  81.5% of headers are C++). Changing the ratio rewrites how past releases are displayed without recomputing anything, so
+  it is a metadata change, not a `method_version` bump; say so in the commit that changes it.
+- **`date`** is the date of the release tag's commit. The preview uses the version number as the x axis (releases are
+  about four weeks apart); the date keeps a calendar axis possible for one field per release.
+- **Totals are not stored.** The total is the sum of the language columns, and the test lines of a release are
+  `all` minus `nontest`.
+
+**The current head is not stored in git.** It changes every week and has no lasting value. The weekly job computes it
+fresh from its checkout and merges it with `data/history.json` into `build/data.json`, which is deployed to `gh-pages` as today. The current
+page bakes its numbers into `index.html` with Mustache; the new page either fetches `data.json` next to it or the build
+inlines it, which is a choice for the implementation. This also avoids a problem with the deploy step: it wipes `gh-pages` on
+every run by default, so history kept only there would be deleted.
+
+### Size
+
+Projected from the real series (compact JSON, one release per line; the sha, date and `h` values are synthetic):
+
+| | Per release | 111 majors | All 505 releases | Growth per year |
+|---|---|---|---|---|
+| Tracked views only (`all`, `nontest`) | about 0.4 KB | about 43 KB | about 190 KB (estimate) | about 5 KB (13 majors) or about 20 KB (about 50 releases) |
+| With the `artifact` block | about 0.6 KB | about 64 KB | about 290 KB (estimate) | about 8 KB or about 30 KB |
+
+This is negligible for git. Pretty-printed it would be about 1.3 to 2 times larger depending on indentation, and every release would touch many
+lines, so keep one release per line.
+
+### Updating it
+
+1. The weekly job lists the remote release tags with `git ls-remote --tags` (the workflow's checkout is depth 1 and has
+   no tags) and compares them with `data/history.json` by version number `v`. The release set follows Open decision 2:
+   for majors only, the pattern is `FIREFOX_<n>_0_RELEASE`. If point releases or ESRs are added, `v` must become the full
+   version string (for example `"140.3.1esr"`), and the "previous release" in the pie and the x axis need a rule.
+2. For each missing release it computes the record (a depth-1 checkout of that tag, about 2 minutes) and appends it.
+   When a major has no `_0_RELEASE` tag (125 has only `_BUILD1` and `125.0.1`), use the nearest tag, store it under
+   `v: 125`, and say so in the record, so it is not fetched again every week. The majors-only file then has 112
+   records (111 tagged majors plus 125).
+3. It computes the head point and merges everything into `build/data.json`.
+4. It commits the appended line to `main`. Decide whether it pushes directly or opens a pull request (branch protection
+   on `main` was not checked). The workflow also runs on `pull_request` and on every push to `main`, so gate the commit
+   step like the Deploy step, put it in a `concurrency` group, and rebase before pushing so a push run and the cron run
+   cannot race. A push made with the default token does not trigger another run, which is what we want here.
+
+The first run backfills the majors with the incremental method from the History section (about 8-9 minutes, about
+3.5 GB on a developer machine, with a memory peak of 8.9 GB; on a standard runner with 16 GB of RAM and about 14 GB of
+free disk next to the head checkout this is tight and has not been tried). After that, a normal week adds nothing except the head, and a release week adds one record.
+
+### One counter
+
+Use a single counter for the backfill, the weekly append and the head point: it takes a tree listing of a commit
+(`git ls-tree -r`) and counts lines per file, and it works on a depth-1 checkout as well as on a blobless clone. Do not
+reuse today's `dev/build-data` for the new data: it has no `.mjs`, no non-test view and no raw headers, and uses the
+2/3 header split. Mixing counters would put seams in the series (the Python and git-pathspec test rules already differ
+by about 0.1 point at 157). One counter is also what makes the rebuild below idempotent.
+
+### When the method changes
+
+Each file carries a `method_version`. Anything that changes the numbers (the language set, the test-path rules, the
+header handling) bumps it and requires recomputing every release, about 8-12 minutes with the incremental method.
+The script that builds the history must be idempotent so that a full rebuild is one command, and the diff of the
+regenerated file shows exactly what moved. Test-path rules written for today's tree apply to older trees that used
+other directory names, so earlier non-test values are less reliable than recent ones.
+
+### Not stored on purpose
+
+- **A split of lines into tests, `third_party` and the rest.** None of the four views needs it, and `all` minus
+  `nontest` already gives test lines. Adding it later means one full recompute (8-12 minutes), so it is cheap to defer.
+  Store it now only if a "vendored vs written by Mozilla" toggle is planned.
+- **File lists.** The records hold counts only. The exception is the symbol file lists for releases 131.0.2 to 143,
+  which exist only on a server that appears to delete them after about two years (see History). Those lists are
+  about 1-2 MB per module and should be kept somewhere outside `history.json` (for example as release assets or on a
+  separate data branch), because the counts could not be recomputed once the symbols expire.
+
 ## What is not counted
 
 Shipped code that is not in the git tree: the `windows` crate (1.83M lines, fetched at build time, Windows builds
@@ -280,13 +404,16 @@ from the toolchains. The symbol approach does not see these as repo files.
 3. What "shipped" should mean for the chart: lines in files that contribute code (about 17% Rust), or machine-code
    bytes (libxul about 26% with the standard library, about 15% without)?
 4. Depend on Mozilla's CI artifacts in the weekly cron, with the static fallback if they are missing?
+5. Storage: commit the weekly update to `main` directly or through a pull request? Keep raw header counts and a
+   test/`third_party`/rest split now, or defer the split? Where to keep the expiring symbol file lists?
 
 ## Suggested order
 
 1. Issue #6: path-based test exclusion plus `*.mjs`, showing "all" and "non-test" views.
 2. **Time-critical, independent of everything else:** extract and keep the symbol file lists (not the zips) for
    releases 131.0.2-143 from the symbol server before they expire (see History).
-3. Issue #10, tracked-file history for all major releases (about 8-9 minutes, measured, see History).
+3. Issue #10, tracked-file history for all major releases (about 8-9 minutes, measured, see History), stored as in
+   Storage design, with the four views.
 4. Prototype the shipped series for the current version as a separate, clearly labelled chart.
 5. Remaining shipped history (49-129 and 144-157 from `candidates/`).
 6. Do not build Firefox in CI.

@@ -7,7 +7,7 @@ and `.github/workflows/deploy.yml`). Figures measured for this document are at r
 
 ## In short
 
-The page counts **lines in files**, grouped into eight languages by file extension, for every major Firefox release
+The page counts **lines in files**, grouped into nine languages by file extension, for every major Firefox release
 from 46 to the newest one and for the current head of the default branch of
 [mozilla-firefox/firefox](https://github.com/mozilla-firefox/firefox). It offers two views of the same releases:
 
@@ -18,22 +18,27 @@ from 46 to the newest one and for the current head of the default branch of
 
 A release without data in a view is drawn as a gap, never as zero.
 
-Firefox 157 in Browser files, headers split as described below:
+The charts draw **Java and Kotlin as one series, Java/Kotlin**, so they show eight series for the nine languages: the
+page has eight series colours and does not add a ninth. The data keeps the two apart (`java` and `kt`), and the
+page's tooltips and tables give the split.
 
-| Language | Lines | Share |
-|---|---:|---:|
-| C++ | 10,987,092 | 42.0% |
-| Rust | 5,616,315 | 21.4% |
-| C | 4,788,840 | 18.3% |
-| JavaScript | 2,973,279 | 11.4% |
-| HTML/CSS | 195,821 | 0.7% |
-| Python | 1,275,464 | 4.9% |
-| Java | 55,497 | 0.2% |
-| Assembly | 295,548 | 1.1% |
-| **Total** | **26,187,856** | **100%** |
+Firefox 157 in Browser files, headers split as described below. The Kotlin lines, the total and the shares, which
+include Kotlin, are in the data (`data.json`) and on the page:
 
-C and C++ include their share of the `.h` lines (fractional lines are rounded here). The Rust share is 21.45% before
-rounding.
+| Language | Lines |
+|---|---:|
+| C++ | 10,987,092 |
+| Rust | 5,616,315 |
+| C | 4,788,840 |
+| JavaScript | 2,973,279 |
+| HTML/CSS | 195,821 |
+| Python | 1,275,464 |
+| Java (the Java part of Java/Kotlin) | 55,497 |
+| Assembly | 295,548 |
+
+C and C++ include their share of the `.h` lines (fractional lines are rounded here). Rust is 21.4% of the lines:
+Kotlin outside `mobile/` is at most 78,202 lines (1,048,566 in the whole tree minus 970,364 under `mobile/`), too
+few to move the rounded share.
 
 ## What a "line" is
 
@@ -58,7 +63,7 @@ tree and `git cat-file --batch` reads the content of each counted blob once.
 - **`mobile/`** holds Mozilla's Android code (Firefox for Android, Focus, GeckoView, Android Components) and a little
   iOS and shared code. It is counted in All files and skipped in Browser files (a prefix match on the path, stored as
   `browser_excluded_prefixes` in the data). At release 157 it holds no Rust, 90,556 of the 147,346 Java lines in All
-  files, and 970,364 lines of Kotlin, which is not counted in either view.
+  files, and 970,364 of the 1,048,566 Kotlin lines (5,855 of the 5,992 `.kt` files).
 
 ### Extensions
 
@@ -74,8 +79,11 @@ be counted; the 157 tree has no such files).
 | `js` | JavaScript | `.jsm` `.jsx` `.js` `.mjs` |
 | `html` | HTML/CSS | `.htm` `.html` `.xhtml` `.xht` `.css` |
 | `py` | Python | `.py` |
-| `java` | Java | `.java` |
+| `java` | Java/Kotlin (with `kt`) | `.java` |
+| `kt` | Java/Kotlin (with `java`) | `.kt` |
 | `asm` | Assembly | `.asm` |
+
+Java and Kotlin are stored separately and added together for the Java/Kotlin series on the charts (see "In short").
 
 Everything else is left out, both from the language lines and from the total that shares are computed against.
 Some sizeable uncounted source extensions in the whole 157 tree, `mobile/` included (examples, not a complete
@@ -83,7 +91,6 @@ ranking; the 2,853 `moz.build` files, for instance, hold 224,982 lines and the `
 
 | Extension | Files | Lines |
 |---|---:|---:|
-| `.kt` (Kotlin; 5,855 of the files under `mobile/`) | 5,992 | 1,048,566 |
 | `.hpp` (C++ headers) | 1,102 | 602,021 |
 | `.ts` (TypeScript) | 2,086 | 566,722 |
 | `.inc` | 147 | 260,473 |
@@ -93,7 +100,8 @@ ranking; the 2,853 `moz.build` files, for instance, hold 224,982 lines and the `
 | `.s` (assembly) | 62 | 38,533 |
 
 Nine of the `.ts` files are binary MPEG transport streams (media test files), not TypeScript; they hold 33,851 of
-those lines. Adding any of these extensions is a method change (see "Changing the method").
+those lines. Kotlin script files (`.kts`) are not counted either: matching uses the last extension and only `.kt` is listed.
+Adding any of these extensions is a method change (see "Changing the method").
 
 ### Headers
 
@@ -181,33 +189,33 @@ A failure in steps 1 to 3 commits and deploys nothing.
 One header line, then one release per line (a new release is a one-line diff). Shortened:
 
 ```
-{"method_version":2,"browser_excluded_prefixes":["mobile/"],"header_split":{"c":0.185,"cpp":0.815},"releases":[
+{"method_version":3,"browser_excluded_prefixes":["mobile/"],"header_split":{"c":0.185,"cpp":0.815},"releases":[
 {"v":157,"tag":"FIREFOX_157_0_RELEASE","sha":"fdd757a2...","date":"2026-09-24",
- "all":{"rust":6172836,"c":...,"cpp":...,"h":...,"js":...,"html":...,"py":...,"java":147346,"asm":...},
- "browser":{"rust":5616315,"c":3889947,"cpp":7027103,"h":4858882,"js":2973279,"html":195821,"py":1275464,"java":55497,"asm":295548}}
+ "all":{"rust":6172836,"c":...,"cpp":...,"h":...,"js":...,"html":...,"py":...,"java":147346,"kt":...,"asm":...},
+ "browser":{"rust":5616315,"c":3889947,"cpp":7027103,"h":4858882,"js":2973279,"html":195821,"py":1275464,"java":55497,"kt":...,"asm":295548}}
 ]}
 ```
 
 | Field | Meaning |
 |---|---|
-| `method_version` | Version of the counting rules the records were made with (2) |
+| `method_version` | Version of the counting rules the records were made with (3) |
 | `browser_excluded_prefixes` | Path prefixes skipped in Browser files (`mobile/`); All files skips nothing |
 | `header_split` | Share of `h` lines given to C and to C++ at display time |
 | `v`, `tag`, `sha`, `date` | Major version, the tag counted, its commit and the commit's date |
-| `all`, `browser` | Lines per language key in each view; `c` and `cpp` exclude headers, which are `h` |
+| `all`, `browser` | Lines per language key in each view; `c` and `cpp` exclude headers, which are `h`; `java` and `kt` are separate |
 
-Totals are not stored: a total is the sum of the nine language keys. `all` minus `browser` is the lines of test files
+Totals are not stored: a total is the sum of the ten language keys. `all` minus `browser` is the lines of test files
 and of `mobile/` together, not the test lines alone.
 
 ### `build/data.json` (deployed as `data.json`)
 
 `data/history.json` plus a `head` object (`sha`, `date`, `all`, `browser`, the same shapes) and three fields kept for
 readers of the old chart: `meta_date` (time of the run), `title_date` (for example `Oct 2026`) and `lang` (lines per
-language at the head, All files, headers split). Consumers should sum only the nine language keys.
+language at the head, All files, headers split). Consumers should sum only the ten language keys.
 
 ### Changing the method
 
-`method_version` is 2. Any change to the rules (the counted extensions, the test rules, the excluded prefixes or how
+`method_version` is 3. Any change to the rules (the counted extensions, the test rules, the excluded prefixes or how
 lines are counted) bumps it and requires regenerating every release, so all stored records always follow one set of
 rules. Changing the `header_split` ratio is not a bump: headers are stored raw, so the new ratio applies to every
 release at display time; say so in the commit that changes it. The history of the rules themselves is in the git
@@ -248,7 +256,8 @@ versions; compare it with the committed file whenever `method_version` changes.
 - **Paths, not builds.** Neither view knows what a given build compiles or ships; Browser files includes code for
   every platform and every vendored library in the tree.
 - **The header split is one fixed ratio** for all releases and both views.
-- **Extensions left out** (`.hpp`, `.hh`, `.mm`, `.S`, `.ts`, `.kt`, ...) are in neither the numerator nor the total.
+- **Extensions left out** (`.hpp`, `.hh`, `.mm`, `.S`, `.ts`, `.kts`, ...) are in neither the numerator nor the total.
+- **Java and Kotlin share one series** on the charts; their split is only in the tooltips, the tables and the data.
 - **The head date.** If the head commit had a zero timestamp, the depth-1 checkout would not hold an ancestor with a
   real one and the build step would fail (unlike `append`, it does not fetch more history). This has not happened.
 

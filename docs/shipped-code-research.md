@@ -35,7 +35,8 @@ The script counts every tracked file with `git ls-files | wc -l`.
 
 ## How the exact approach works
 
-Mozilla builds Firefox on every push. These outputs are public, need no authentication, and are kept for a year:
+Mozilla builds Firefox on every push. For the current version these outputs are public, need no authentication, and the
+Taskcluster copies are kept for a year (older releases are covered in the History section):
 
 | Artifact | What it gives | Size |
 |---|---|---|
@@ -50,7 +51,10 @@ I confirmed on 2026-10-05 that it resolves to the build of `00a4d527` and that t
 
 1. Resolve the `latest.firefox.linux64-opt` index entry to a task id and read the git sha from its routes. Do not
    use `HEAD`: it can be ahead of the last finished build.
-2. Range-read the zip directory and the `FILE` header of each shipped `.sym` (about 20 MB, about 35 s).
+2. Range-read the zip directory and the `FILE` header of each shipped `.sym` (about 20 MB, about 35 s). The zip also
+   holds test binaries, so intersect its modules with the binaries in the build's package (a release tarball for released versions, about
+   55-90 MB; for the weekly mozilla-central build, the same task's `public/build/target.tar.xz`, 96.7 MB), streamed in a few
+   seconds. The package is also where the build id of each module comes from.
 3. Fetch that sha blobless (`git fetch --depth 1 --filter=blob:none origin <sha>`, about 17 MiB), then fetch only
    the referenced blobs with one `git fetch --filter=blob:none --stdin` (about 80 MB, about 45 s).
 4. Classify each path by extension and count lines.
@@ -66,7 +70,8 @@ as one job. If the job also keeps the tracked-file series, it still needs today'
 
 - `git ls-tree -l` or `git checkout` on a blobless clone fetches blobs one at a time (about 0.7 s each, hours for
   19k files). Always batch-fetch with `--stdin`.
-- The symbols zip holds two `libxul.so` builds. The gtest one has `gtest` file paths; skip it.
+- The symbols zip holds two `libxul.so` builds (shipped and gtest). Zip order is arbitrary. Pick the module by the
+  build id found in the release tarball, or failing that by the variant without `gtest` file paths.
 - Skip `FILE` records that are not tracked source: Rust standard library (`/builds/worker/fetches/rustc/...`),
   sysroot headers, and generated sources (`s3:gecko-generated-sources...`, about 3,500 records).
 - The recursive GitHub trees API truncates on this repo (at about 59k entries), so it cannot replace the fetch.
@@ -88,6 +93,154 @@ contributes machine code.
   `third_party/application-services` (Mozilla-written) and Mozilla-org crates inside `third_party/rust` (29 crates,
   about 8% of shipped Rust lines).
 
+## History (issue #10): time and data per version, and for all releases
+
+Issue #10 asks for older charts. This section measures what that costs. All timings come from a developer machine
+(a home connection) unless marked "CI". The CI checkout of the current version (about 2 minutes, 1 GB) was
+measured on real GitHub runs.
+
+### Which versions exist
+
+`mozilla-firefox/firefox` has 505 final-release tags of the form `FIREFOX_<n>_RELEASE` (versions 45 to 157, including
+point releases and ESR), of which **111 are major releases** (`FIREFOX_<n>_0_RELEASE`, 46 to 157). Release 125 is
+missing from that list: it has `FIREFOX_125_0_BUILD1` and `FIREFOX_125_0_1_RELEASE` to `_3_`, but no
+`FIREFOX_125_0_RELEASE`, so the chart should use `FIREFOX_125_0_BUILD1` or 125.0.1. There are no final-release tags
+before 45 (beta tags go back to Firefox 36); `main` history itself goes back to 1998, so date-based snapshots could
+extend the chart, but Rust is negligible before 46 (2,862 lines at 46). Release tags sit on release-branch commits that are not reachable from
+`main`, so a clone must fetch them explicitly (`git fetch origin '+refs/tags/FIREFOX_*_RELEASE:refs/tags/FIREFOX_*_RELEASE'`,
+22 s and 0.13 GiB).
+
+### Tracked-file series (what the chart shows today)
+
+**Naive: one fresh depth-1 checkout per version.** Measured with `git clone --depth 1 --branch <tag>`:
+
+| Version | Time | Pack download | Files |
+|---|---|---|---|
+| 46 | 49 s | 294 MB | 135,747 |
+| 100 | 91 s | 722 MB | 306,082 |
+| 157 (CI, real runs, about 480k files) | 117-125 s | about 1 GB | about 480,000 |
+
+Adding about 40 s per version to count lines (the current script takes 37 s on a current checkout), this extrapolates to roughly
+**4 hours and 75 GB** of downloads for the 111 majors and **18 hours and 340 GB** for all 505 releases. These two
+totals are extrapolations from the three points above, not measured runs.
+
+**Incremental: one blobless clone, count each distinct file once.** Successive releases share almost all files: the
+111 majors list about 26M file entries but only **1,477,275 distinct counted files** (an 18x reduction); all 505
+releases add only 2.2% more (1,510,333 distinct, about 33k more files) on the same language set. Measured end to end for the 111 majors:
+
+| Step | Time | Download / disk |
+|---|---|---|
+| Blobless clone with full history (1.0M commits) | 90 s | 1.1 GiB |
+| Fetch the release tags | 22 s | +0.13 GiB |
+| `git ls-tree -r` for 111 tags (all 505 tags: 148 s) | 46 s | none (trees are local) |
+| Fetch the 1,477,275 distinct counted files, 4 parallel streams | 269 s | +2.2 GB |
+| Count lines of every file, then aggregate per version | 39 s | none |
+| **Total** | **about 8-9 minutes** | **about 3.5 GB downloaded and on disk** |
+
+- A single fetch stream is slower: 20,000 files took 24 s (57 MiB), which would be about 31 minutes for 1.5M files. The
+  parallel run was about 7x faster than that extrapolation. Four streams were enough; I did not test more.
+- All 505 releases: the same recipe, about **12 minutes by extrapolation, not measured** (`ls-tree` 148-183 s, about 33k
+  more files to fetch, aggregation over 4.5x more tree entries). **Memory matters:** the prototype keeps every tag's
+  tree entries in memory and peaked at 8.9 GB for the 111 majors (reviewer's rerun); all 505 tags would not fit a 16 GB
+  runner and need per-tag streaming aggregation.
+- Timings: the 269 s fetch covered 1,468,643 files; about 19k more came from the earlier 24 s sample. Counting plus
+  aggregation took 39 s in my run and 78 s in the reviewer's rerun, so the total is **8-9 minutes**.
+- This beats per-version checkouts by roughly 30x for 111 versions. For a single version, a depth-1 checkout (about
+  2 minutes) is still faster than a blobless fetch of that version's files (about 360k files, about 7 minutes on one
+  stream).
+
+**Design options.** Release trees never change, so an append-only design fits: backfill the history once, then each
+week compute only the new release tags (a depth-1 checkout of each, about 2 minutes) and append to the stored series.
+That avoids re-downloading 3.5 GB and holding about 9 GB in memory every week. Regenerating everything weekly is
+simpler but needs the streaming aggregation above, and has never been run on a CI runner (all incremental timings here
+are from a developer machine).
+
+**Where to store it.** The workflow deploys `build/` with `JamesIves/github-pages-deploy-action@v4`, whose `clean`
+input defaults to true, so a history file kept only on `gh-pages` is deleted on every deploy unless each run
+regenerates it or it is committed to `main` (or excluded from the clean). Pick one before implementing.
+
+**Data to store.** Results are tiny: one record per version and view is about 0.25 KB (about 0.5 KB per version for two views), so the 111-version series with
+the "all" and "non-test" views is 56 KB pretty-printed, and 505 versions would be about 250 KB. A per-file line-count
+cache (1.48M files x about 24 bytes) would be about 35 MB, but it is not needed: recomputing the whole history takes
+about 8-9 minutes for the majors, so regenerating it is an option (see Design options) and only the output JSON needs storing (for example on `gh-pages`).
+
+**Real series (measured, same method, 111 majors).** Language set as the script plus `.mjs`; non-test uses a
+re-implementation of the path rules above in Python (it gives 21.35% for 157, against 21.4-21.45% from the git
+pathspec version, so the two agree to about 0.1 point). Rust includes vendored crates.
+
+| Version | Rust lines | Rust % (all files) | Rust % (non-test) |
+|---|---|---|---|
+| 46 | 2,862 | 0.02% | 0.03% |
+| 56 | 1,024,084 | 4.3% | 7.1% |
+| 66 | 1,766,567 | 6.7% | 11.1% |
+| 76 | 2,371,967 | 8.3% | 13.7% |
+| 86 | 3,041,592 | 9.8% | 16.2% |
+| 96 | 3,096,054 | 9.4% | 15.2% |
+| 106 | 3,291,266 | 9.4% | 15.2% |
+| 116 | 3,356,027 | 9.4% | 15.0% |
+| 127 | 4,348,662 | 11.2% | 17.9% |
+| 137 | 4,530,117 | 11.2% | 18.1% |
+| 147 | 5,090,304 | 12.0% | 19.2% |
+| 157 | 6,172,836 | 12.7% | 21.4% |
+
+Caveats: the test-path rules were written for today's tree, and older trees used other directory names, so earlier
+non-test values are less reliable. Only 157 was cross-checked against another method. The numbers are the tracked-file
+view, not the shipped view.
+
+### Shipped series for older releases
+
+Feasible for most of 45-157, but only with era-specific handling. The method is the same as for the current version
+(file lists from the symbol files, line counts at the git tag). Symbols for old releases are not on Taskcluster. They
+are on archive.mozilla.org under `candidates/<ver>-candidates/build<N>/linux-x86_64/en-US/firefox-<ver>.crashreporter-symbols.zip`
+(not under `releases/`), and on the symbol server (Tecken). I checked the zips for 60, 100, 129, 144 and 157 (present)
+and 140.0 (404).
+
+| Versions | Source | Feasible? |
+|---|---|---|
+| 49-129 and ESR 52/60/68/78/91/102/115/128.x | `candidates/` zip | Yes |
+| 130.0, 130.0.1, 131.0 | none (zip deleted, symbol server expired) | No; use 131.0.2 as a proxy for 131 |
+| 131.0.2-143, 140.0-140.3.1esr | symbol server only, build id from the release tarball | Yes, **until the symbols expire** |
+| 144-157, 140.4esr and later | `candidates/` zip | Yes |
+| 45 | `candidates/` for 45.3.0esr-45.9.0esr only | Yes, through the ESR |
+| 46, 48 | none | No; fall back to tracked-file counts |
+| 47 | 47.0.2 zip only, no git tag for 47.0.2 | Approximate (use the 47.0.1 tree) |
+| 44 and earlier | none | No |
+
+- **There is a deadline, and it is days away.** The symbol server appears to delete symbols about two years after
+  upload (inferred from probes; the mechanism, upload age or last access, is undocumented). On 2026-10-05 libxul for
+  131.0 (built 2024-09-23, debug id `346A619AA15B85ECD0F409165F54E6F90`) returns 404, while 131.0.2 (built 2024-10-08,
+  `4CF815C463F6367F0E0432563847F4FE0`) still returns 200. If expiry is two years from build, 131.0.2 goes around
+  2026-10-08, and then roughly one release every 2-4 weeks. Releases 131.0.2 to 143 live only there, so their file
+  lists should be extracted **now**, oldest first, and kept (about 1-2 MB per module). Use 131.0.2 as the proxy for 131
+  only while it lasts.
+- **The 130-143 hole in `candidates/` is unexplained.** ESR builds from the same months are intact, so other zips may
+  also vanish without notice.
+- **Formats change.** Versions 45-56 use `hg:hg.mozilla.org/releases/mozilla-release:<path>:<12-char rev>`; 57-146 use `hg:` too (12-char
+  revs at 57, 40-char by 60; generated code under `s3:gecko-generated-sources` from 57); 147 and later use `git:`. The hg
+  path maps to the git tag's tree by stripping the prefix and revision: 0 missing paths for 91, 102, 106, 115, 128, 129,
+  135, 143, 144, 140.17esr, 150 and 157. For 45-78 there are 57-103 unmatched paths (toolchain headers, `obj-*`,
+  absolute paths), which need per-era exclusion rules.
+- **Per-version cost.** About 55-110 MB and 30-60 requests (release tarball 53-89 MB, which must be streamed to find
+  the shipped modules and their build ids, plus 1-20 MB of symbol headers), roughly 5-15 s of network time. For 111
+  majors that is about 8-11 GB of transfer and an estimated 20-30 minutes of network time. These are estimates; no
+  whole series was run. Line counts reuse the blobs already fetched for the tracked series.
+- **The real cost is engineering, not compute.** Three FILE record eras, per-era exclusion rules, build-id based module
+  selection, and the missing versions. A first version could cover only 147-157 (`git:` paths, about 11 majors; 144-146 are
+  still `hg:` and need the prefix stripping) and add earlier eras later.
+- A static fallback (config.status plus BuildReader) is not verified for old trees: `candidates/` has no
+  `config.status`, and old trees likely need Python 2.
+
+### Summary: time and data
+
+| | Time | Download / disk | Stored output |
+|---|---|---|---|
+| One version, tracked (today) | about 2.3 min (CI) | about 1 GB / 5.7 GB | a few KB |
+| One version, shipped (new) | about 2 min (estimate) | about 150-250 MB | a few KB |
+| 111 majors, tracked, per-version checkouts | about 4 h (extrapolated) | about 75 GB | 56 KB |
+| **111 majors, tracked, incremental** | **about 8-9 min (measured)** | **about 3.5 GB** | **56 KB** |
+| 505 releases, tracked, incremental | about 12 min (extrapolated) | about 3.5 GB, memory needs streaming | about 250 KB |
+| 111 majors, shipped | about 30 min of network (estimate) plus engineering | about 8-11 GB | about 1-2 MB per module if lists are kept |
+
 ## What is not counted
 
 Shipped code that is not in the git tree: the `windows` crate (1.83M lines, fetched at build time, Windows builds
@@ -100,8 +253,8 @@ from the toolchains. The symbol approach does not see these as repo files.
   and macOS crate sets is about 0.55M lines larger than Linux alone). The Windows `FILE` records for the `windows` crate will not
   resolve to git paths, so that code would be silently dropped. Label the chart "Linux x86-64".
 - **Dependence on Mozilla infrastructure.** Taskcluster index, artifacts and the symbol server are public but are not
-  a documented stable API. Artifacts expire after one year, so a shipped series cannot be backfilled past that.
-  `coverage.moz.tools` has no DNS record any more; do not use it.
+  a documented stable API. The Taskcluster copies expire after one year, but older releases have symbols elsewhere (see
+  History). `coverage.moz.tools` has no DNS record any more; do not use it.
 - **Fallback without the artifacts:** the official `config.status` plus mozbuild `BuildReader`, `cargo tree --offline`
   on the vendored crates, and `jar.mn` parsing. This needs only Python 3.10+ and cargo. It gives an upper bound that
   overstates Rust about 2.2x (4.54M lines reachable vs about 2.0M that ship), so it is a fallback, not a stats source.
@@ -123,6 +276,7 @@ from the toolchains. The symbol approach does not see these as repo files.
 
 1. Linux x86-64 only (recommended, labelled), or also Windows and macOS?
 2. Add the shipped chart beside the existing one (recommended; keeps history from issue #10 comparable), or replace it?
+   For history, majors only (111 versions) or every release (505)?
 3. What "shipped" should mean for the chart: lines in files that contribute code (about 17% Rust), or machine-code
    bytes (libxul about 26% with the standard library, about 15% without)?
 4. Depend on Mozilla's CI artifacts in the weekly cron, with the static fallback if they are missing?
@@ -130,13 +284,19 @@ from the toolchains. The symbol approach does not see these as repo files.
 ## Suggested order
 
 1. Issue #6: path-based test exclusion plus `*.mjs`, showing "all" and "non-test" views.
-2. Prototype the shipped series as a separate, clearly labelled chart.
-3. Do not build Firefox in CI.
+2. **Time-critical, independent of everything else:** extract and keep the symbol file lists (not the zips) for
+   releases 131.0.2-143 from the symbol server before they expire (see History).
+3. Issue #10, tracked-file history for all major releases (about 8-9 minutes, measured, see History).
+4. Prototype the shipped series for the current version as a separate, clearly labelled chart.
+5. Remaining shipped history (49-129 and 144-157 from `candidates/`).
+6. Do not build Firefox in CI.
 
 ## Method and verification
 
 Four independent researchers covered the vendored-code inventory, build-graph recovery, test exclusion and counting
 method, and bundle and CI cost. A fresh reviewer then reproduced the headline numbers (the current script totals, the
 non-test split, the shipped Rust count, crate counts, the chrome-map and `omni.ja` JS counts, and the live endpoints)
-over two rounds. Not independently verified: the range-read and batch-fetch timings, the BuildReader 3-5 s claim, the
+over two rounds. The History section was measured directly (blobless full clone, fetch and count of all 1,477,275
+distinct counted files of the 111 majors, depth-1 checkouts of 46 and 100) plus a researcher survey of symbol availability
+for 553 `candidates/` directories, spot-checked by me (zips for 60, 100, 129, 144, 157 present; 140.0 absent). Not independently verified: the range-read and batch-fetch timings, the BuildReader 3-5 s claim, the
 `windows` crate size, and the Kotlin and SLOC figures. Windows/macOS symbols and the desktop SBOM were not examined.

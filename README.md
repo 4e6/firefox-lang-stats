@@ -59,9 +59,9 @@ for the subcommands, the language and test rules, and the release set.
   `date` is the committer date of the counted commit.
 - Kept for anyone reading the old file: `meta_date` (time of the run), `title_date` and `lang` (name and lines per
   language at the head, all files). The `lang` numbers differ from the old ones: `.mjs` now counts as JavaScript,
-  `.hpp`/`.hh` as C++ and `.S`/`.s` as Assembly, mobile code is included, files with NUL bytes count 0, and headers
-  are split 18.5% C / 81.5% C++ instead of 1/3 / 2/3. The list has ten entries instead of eight: TypeScript (after
-  JavaScript) and Kotlin (after Java) are new, and JavaScript and Java no longer include them.
+  `.hpp`/`.hh` as C++ and `.S`/`.s` as Assembly, files with NUL bytes count 0, and headers are split 18.5% C / 81.5%
+  C++ instead of 1/3 / 2/3. (`mobile/` is counted, as in the old script.) The list has ten entries instead of eight:
+  TypeScript (after JavaScript) and Kotlin (after Java) are new.
 
 ## Running it locally
 

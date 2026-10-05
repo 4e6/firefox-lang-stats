@@ -15,8 +15,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js" integrity="sha384-su5kReKyYlIFrI62mbQRKXHzFobMa7BHp1cK6julLPbnYcCW9NIZKJiTODjLPeDh" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
-/* Series colours are the validated categorical slots in fixed order (C++ blue, Rust orange, C aqua, JavaScript yellow,
-   HTML/CSS magenta, Python green, Java/Kotlin violet, Assembly red). Light and dark tokens; data-theme overrides the system. */
+/* Series colours are the validated categorical slots in fixed order (C++ blue, Rust orange, C aqua,
+   JavaScript/TypeScript yellow, HTML/CSS magenta, Python green, Java/Kotlin violet, Assembly red). Light and dark tokens; data-theme overrides the system. */
 /* tokens:begin */ /* also copied into methodology.html by dev/render_docs.py */
 :root {
   --bg: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #6b6a64;
@@ -103,7 +103,7 @@ table.data th:first-child, table.data td:first-child { text-align: left; }
 table.data th { font-weight: 500; color: var(--ink2); position: sticky; top: 0; background: var(--bg); }
 table.data .mono { font-family: var(--mono); white-space: nowrap; }
 table.data td.gap { color: var(--muted); }
-table.data .sub { color: var(--muted); font-size: 11px; font-weight: 400; }
+table.data .sub { color: var(--muted); font-size: 11px; font-weight: 400; white-space: normal; }   /* wraps between parts when narrow */
 table.data td:first-child .sub { padding-left: 18px; }   /* under the name, past the swatch (Pie table) */
 .cap { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
 .scroll { overflow: auto; max-height: 320px; border: 1px solid var(--hair); border-radius: 6px; }
@@ -156,8 +156,9 @@ table.data td:first-child .sub { padding-left: 18px; }   /* under the name, past
 /* ---------- constants and state ---------- */
 const LANGS = [
   { k: 'C++', name: 'C++', c: '--s1' }, { k: 'Rust', name: 'Rust', c: '--s2' }, { k: 'C', name: 'C', c: '--s3' },
-  { k: 'JavaScript', name: 'JavaScript', c: '--s4' }, { k: 'HTML', name: 'HTML/CSS', c: '--s5' },
-  { k: 'Python', name: 'Python', c: '--s6' }, { k: 'Java', name: 'Java/Kotlin', c: '--s7' }, { k: 'Assembly', name: 'Assembly', c: '--s8' }
+  { k: 'JavaScript', name: 'JavaScript/TypeScript', short: 'JS/TS', c: '--s4', parts: [['JavaScript', 'js'], ['TypeScript', 'ts']] },
+  { k: 'HTML', name: 'HTML/CSS', c: '--s5' }, { k: 'Python', name: 'Python', c: '--s6' },
+  { k: 'Java', name: 'Java/Kotlin', c: '--s7', parts: [['Java', 'java'], ['Kotlin', 'kt']] }, { k: 'Assembly', name: 'Assembly', c: '--s8' }
 ];
 const VIEWS = [
   { k: 'all', name: 'All files', long: 'All tracked files' },
@@ -169,8 +170,9 @@ const TABS = [
   { k: 'share', name: 'Language share', title: null },
   { k: 'pie', name: 'Pie', title: 'One release at a time' }
 ];
-const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'kt', 'asm'];   // only these are summed
-// Java and Kotlin are one series (Java/Kotlin, key 'Java'): the palette has eight slots; the data keeps them apart
+const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'ts', 'html', 'py', 'java', 'kt', 'asm'];   // only these are summed
+// A series with `parts` sums several data keys (JavaScript/TypeScript, Java/Kotlin): the palette has eight slots and
+// no ninth colour is made. The data keeps the parts apart; tooltips and tables show them.
 const st = { tab: 'comp', view: 'browser', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
 let D = null;          // display data, built from data.json
 let HAS = {};          // view key -> has any data
@@ -190,10 +192,10 @@ const langOf = k => LANGS.find(l => l.k === k);
 function convert(b, split) {
   if (!b || typeof b !== 'object') return null;
   for (const k of RAW_KEYS) if (typeof b[k] !== 'number' || !isFinite(b[k])) return null;   // an incomplete record is a gap
-  const o = { 'C++': b.cpp + b.h * split.cpp, Rust: b.rust, C: b.c + b.h * split.c, JavaScript: b.js, HTML: b.html,
+  const o = { 'C++': b.cpp + b.h * split.cpp, Rust: b.rust, C: b.c + b.h * split.c, JavaScript: b.js + b.ts, HTML: b.html,
               Python: b.py, Java: b.java + b.kt, Assembly: b.asm };
   o.total = LANGS.reduce((a, L) => a + o[L.k], 0);
-  o.jv = b.java; o.kt = b.kt;   // the two parts of Java/Kotlin, for tooltips and tables; not in the total
+  o.raw = b;   // the data keys, for the parts of a combined series; not in the total
   return o.total > 0 ? o : null;
 }
 function build(data) {
@@ -224,11 +226,12 @@ const isolated = (arr, j) => arr[j] != null && (j === 0 || arr[j - 1] == null) &
 const shortRun = (arr, j) => { if (arr[j] == null) return false; let a = j, b = j;
   while (a > 0 && arr[a - 1] != null) a--; while (b < arr.length - 1 && arr[b + 1] != null) b++; return b - a < 2; };
 const cellVal = (view, k, i, isS) => isS ? pct(share(view, k, i)) : exact(val(view, k, i));
-// 'Java 55,497, Kotlin 1,234' (the parts) for the Java/Kotlin series, null for any other language or a gap
-const jk = (view, k, i) => { const r = rec(view, i); return k === 'Java' && r ? 'Java ' + exact(r.jv) + ', Kotlin ' + exact(r.kt) : null; };
-// a table cell; in Lines mode the Java/Kotlin cell gets its split as a second, muted line
+// the parts of a combined series, e.g. 'Java 55,497, Kotlin 1,234'; null for a single language or a gap
+const partsOf = (view, k, i) => { const r = rec(view, i), L = langOf(k);
+  return r && L.parts ? L.parts.map(([n, key]) => n + '\u00a0' + exact(r.raw[key])).join(', ') : null; };   // breaks only between parts
+// a table cell; in Lines mode a combined series' cell gets its parts as a second, muted line
 function cell(view, k, i, isS) {
-  const td = el('td', 'mono', cellVal(view, k, i, isS)), s = isS ? null : jk(view, k, i);
+  const td = el('td', 'mono', cellVal(view, k, i, isS)), s = isS ? null : partsOf(view, k, i);
   if (s) td.appendChild(el('div', 'sub', s));
   return td;
 }
@@ -312,8 +315,9 @@ function helpFill(pop) {
   pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (mostly Android code) and minus files matched by the test rules. '
     + 'It keeps the desktop code for every platform, plus vendored third-party code, build tooling and docs. The test rules were written for today\'s tree, so values for older releases are less reliable.']));
   pop.appendChild(para(['Header files (', ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp)
-    + ' C++. Kotlin (', ['code', '.kt'], ') is counted, and shown together with Java as Java/Kotlin in the charts. '
-    + 'Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
+    + ' C++; ', ['code', '.hpp'], ' and ', ['code', '.hh'], ' count as C++, ', ['code', '.S'], ' and ', ['code', '.s'], ' as Assembly. '
+    + 'TypeScript (', ['code', '.ts'], ') is shown together with JavaScript, and Kotlin (', ['code', '.kt'], ') with Java. '
+    + 'Binary ', ['code', '.ts'], ' files (video test media) are skipped. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
 }
 function helpButton(host) {
   const btn = el('button', 'help', '?'); btn.type = 'button';
@@ -378,7 +382,7 @@ function drawStack(wrap) {
   if (W >= 520 && li >= 0) stack.forEach((s, j) => {
     const lst = s[li], mid = (y(lst[0]) + y(lst[1])) / 2, th = Math.abs(y(lst[0]) - y(lst[1]));
     if (th < 15) return;
-    const t = svgEl(svg, 'text', { x: W - m.r + 8, y: mid + 4, class: 'strong' }); t.textContent = LANGS[j].name + ' ' + (isS ? pct(lst[1] - lst[0]) : lines(lst[1] - lst[0]));
+    const t = svgEl(svg, 'text', { x: W - m.r + 8, y: mid + 4, class: 'strong' }); t.textContent = (LANGS[j].short || LANGS[j].name) + ' ' + (isS ? pct(lst[1] - lst[0]) : lines(lst[1] - lst[0]));
   });
   svgEl(svg, 'line', { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: css('--axis') });
   const cross = svgEl(svg, 'line', { y1: m.t, y2: H - m.b, stroke: css('--ink'), visibility: 'hidden' });
@@ -387,7 +391,7 @@ function drawStack(wrap) {
     cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
     if (!rec(view, i)) { tipShow(wrap, x(i), m.t + 40, ttl(i), [{ color: css('--axis'), name: 'No data in this view', value: '' }]); return; }
     const rs = LANGS.slice().reverse().map(L => ({ color: css(L.c), name: L.name,
-      value: pct(share(view, L.k, i)) + ' · ' + exact(val(view, L.k, i)), sub: jk(view, L.k, i) }));
+      value: pct(share(view, L.k, i)) + ' · ' + exact(val(view, L.k, i)), sub: partsOf(view, L.k, i) }));
     tipShow(wrap, x(i), m.t + 40, ttl(i) + ' · ' + exact(total(view, i)) + ' lines', rs);
   };
   const leave = () => { cross.setAttribute('visibility', 'hidden'); tipHide(wrap); };
@@ -497,7 +501,7 @@ function drawLangShare(wrap) {
       const v = V(s.k, i);
       if (v == null) { dots[j].setAttribute('visibility', 'hidden'); return { color: col, name: s.name, value: 'no data' }; }
       dots[j].setAttribute('cx', x(i)); dots[j].setAttribute('cy', y(v)); dots[j].setAttribute('visibility', 'visible');
-      return { color: col, name: s.name, value: pct(share(s.k, lang, i)) + ' · ' + exact(val(s.k, lang, i)), sub: jk(s.k, lang, i) };
+      return { color: col, name: s.name, value: pct(share(s.k, lang, i)) + ' · ' + exact(val(s.k, lang, i)), sub: partsOf(s.k, lang, i) };
     });
     tipShow(wrap, x(i), m.t + 30, ttl(i) + ' · ' + LL.name, rows);
   };
@@ -525,7 +529,7 @@ function drawPie(wrap, i) {
   const arc = d3.arc().innerRadius(0).outerRadius(r);
   for (const a of arcs) {
     const p = svgEl(g, 'path', { d: arc(a), fill: css(a.data.L.c), stroke: css('--bg'), 'stroke-width': 2 });
-    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v), sub: jk(view, a.data.L.k, i) }]); });
+    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v), sub: partsOf(view, a.data.L.k, i) }]); });
     p.addEventListener('pointerleave', () => tipHide(left));
   }
   const right = el('div'); grid.appendChild(right);
@@ -536,7 +540,7 @@ function drawPie(wrap, i) {
     const tr = el('tr'), c0 = el('td'), sw = el('span');
     sw.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;background:var(' + L.c + ')';
     c0.appendChild(sw); c0.appendChild(document.createTextNode(L.name)); tr.appendChild(c0);
-    const sp = jk(view, L.k, i); if (sp) c0.appendChild(el('div', 'sub', sp));
+    const sp = partsOf(view, L.k, i); if (sp) c0.appendChild(el('div', 'sub', sp));
     tr.appendChild(el('td', 'mono', pct(share(view, L.k, i)))); tr.appendChild(el('td', 'mono', exact(val(view, L.k, i))));
     let dd = '–';
     if (pi != null) { const d = (share(view, L.k, i) - share(view, L.k, pi)) * 100; const a = Math.abs(d).toFixed(1); dd = (+a === 0 ? '±' : d > 0 ? '+' : '−') + a + ' pp'; }

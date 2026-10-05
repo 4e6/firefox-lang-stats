@@ -312,8 +312,11 @@ function helpFill(pop) {
   const sp = D.split, f = v => (v * 100).toFixed(1) + '%';
   pop.appendChild(para([['b', 'All files'], ': every file tracked by git at the release tag (or the current head), counted by file extension, ',
     ['code', 'mobile/'], ' included. Lines are newline counts, not lines of code.']));
-  pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (mostly Android code) and minus files matched by the test rules. '
-    + 'It keeps the desktop code for every platform, plus vendored third-party code, build tooling and docs. The test rules were written for today\'s tree, so values for older releases are less reliable.']));
+  pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (mostly Android code), minus build tooling and vendored Python/Node tooling (',
+    ['code', 'python/'], ', ', ['code', 'third_party/python/'], ', ', ['code', 'third_party/node/'], ', ', ['code', 'taskcluster/'], ', ',
+    ['code', 'tools/lint/'], ', ', ['code', 'tools/tryselect/'], ', ', ['code', 'tools/@types/'], ', ', ['code', 'build/clang-plugin/'], ', ',
+    ['code', 'build/pgo/'], ', ', ['code', 'docs/'], '), and minus files matched by the test rules. '
+    + 'It keeps the desktop code for every platform and the other vendored third-party code. The tooling list and the test rules were written for today\'s tree, so values for older releases are less reliable.']));
   pop.appendChild(para(['Header files (', ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp)
     + ' C++; ', ['code', '.hpp'], ' and ', ['code', '.hh'], ' count as C++, ', ['code', '.S'], ' and ', ['code', '.s'], ' as Assembly. '
     + 'TypeScript (', ['code', '.ts'], ') is shown together with JavaScript, and Kotlin (', ['code', '.kt'], ') with Java. '

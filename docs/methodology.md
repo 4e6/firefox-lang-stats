@@ -14,7 +14,7 @@ from 46 to the newest one and for the current head of the default branch of
 | View | What is counted | Releases covered |
 |---|---|---|
 | All files | Every file tracked by git at the release tag (or the head) with a counted extension, `mobile/` included | Every major release from 46 and the head |
-| Browser files | The same files minus `mobile/` (mostly Android code) and minus the files matched by the test rules | Every major release from 46 and the head |
+| Browser files | The same files minus `mobile/` (mostly Android code), minus ten directories of build and developer tooling (vendored Python and Node packages included) and minus the files matched by the test rules | Every major release from 46 and the head |
 
 A release without data in a view is drawn as a gap, never as zero.
 
@@ -27,17 +27,17 @@ Firefox 157 in Browser files, headers split as described below:
 
 | Language | Lines | Share |
 |---|---:|---:|
-| C++ | 11,702,041 | 42.7% |
-| Rust | 5,616,315 | 20.5% |
-| C | 4,788,840 | 17.5% |
-| JavaScript/TypeScript (JavaScript 2,973,279, TypeScript 173,155) | 3,146,434 | 11.5% |
-| HTML/CSS | 195,821 | 0.7% |
-| Python | 1,275,464 | 4.7% |
+| C++ | 11,689,446 | 45.8% |
+| Rust | 5,613,873 | 22.0% |
+| C | 4,693,307 | 18.4% |
+| JavaScript/TypeScript (JavaScript 2,270,727, TypeScript 67,204) | 2,337,931 | 9.2% |
+| HTML/CSS | 182,925 | 0.7% |
+| Python | 319,029 | 1.3% |
 | Java/Kotlin (Java 55,497, Kotlin 72,324) | 127,821 | 0.5% |
-| Assembly | 531,363 | 1.9% |
-| **Total** | **27,384,099** | **100%** |
+| Assembly | 531,363 | 2.1% |
+| **Total** | **25,495,695** | **100%** |
 
-C and C++ include their share of the `.h` lines (fractional lines are rounded here). The Rust share is 20.51% before
+C and C++ include their share of the `.h` lines (fractional lines are rounded here). The Rust share is 22.02% before
 rounding. In All files at 157 Rust is 6,172,779 of 51,249,799 lines, 12.04%.
 
 ## What a "line" is
@@ -46,7 +46,8 @@ rounding. In All files at 157 Rust is 6,172,779 of 51,249,799 lines, 12.04%.
   without a trailing newline is not counted. A binary file counts 0 lines (see "Which files").
 - It is **not SLOC**: blank lines, comments and licence headers count like code.
 - It is **lines in files, not authored code**. Vendored third-party code is included wherever it sits (for example
-  `third_party/rust`, which also holds Mozilla-written crates).
+  `third_party/rust`, which also holds Mozilla-written crates); Browser files leave out only the vendored Python and
+  Node tooling (`third_party/python/`, `third_party/node/`).
 
 ## Which files
 
@@ -64,8 +65,8 @@ tree and `git cat-file --batch` reads the content of each counted blob once.
   278 JavaScript and 1,265 HTML/CSS lines. Browser files lose nothing to this rule in any release; in All files it
   takes 3 to 278 JavaScript and 788 to 1,598 HTML/CSS lines per release, and 57 Rust lines from 119 on.
 - **`mobile/`** holds Mozilla's Android code (Firefox for Android, Focus, GeckoView, Android Components) and a little
-  iOS and shared code. It is counted in All files and skipped in Browser files (a prefix match on the path, stored as
-  `browser_excluded_prefixes` in the data). At release 157 it holds no Rust, 90,556 of the 147,346 Java lines in All
+  iOS and shared code. It is counted in All files and skipped in Browser files (a prefix match on the path; the data
+  stores it, with the tooling prefixes of "Browser files" below, as `browser_excluded_prefixes`). At release 157 it holds no Rust, 90,556 of the 147,346 Java lines in All
   files, and 970,364 of the 1,048,566 Kotlin lines (92.5%; 5,855 of the 5,992 `.kt` files), so Browser files hold
   only 72,324 lines of Kotlin.
 
@@ -123,10 +124,38 @@ which is vendored twice (`js/src/tests/test262/` and a copy inside web-platform-
 
 ### Browser files
 
-The same files minus the paths under `mobile/` and minus test paths (`is_test()` in `dev/history.py`). Everything
-else stays: the desktop code for every platform (Windows, macOS, Linux and the others), vendored third-party code
-whether or not a given build compiles it, build tooling and scripts, documentation, devtools and so on. It is **not**
-"what ships in the download": it is what the repository holds outside the mobile apps and the tests.
+The same files minus the paths under the prefixes of `browser_excluded_prefixes` (`mobile/` and ten tooling
+directories) and minus test paths (`is_test()` in `dev/history.py`). Everything else stays: the desktop code for every
+platform (Windows, macOS, Linux and the others), vendored third-party code whether or not a given build compiles it,
+devtools and so on. It is **not** "what ships in the download": it is what the repository holds outside the mobile
+apps, the listed tooling directories and the tests.
+
+The excluded prefixes are plain path-prefix matches from the top of the repository, like `mobile/`. They were picked
+by hand from the 157 tree and checked against older releases. Lines are the non-test lines a prefix removes from
+Browser files at 157:
+
+| Prefix | What it is | Why it is excluded | Lines at 157 |
+|---|---|---|---:|
+| `mobile/` | The Android apps: Firefox for Android, Focus, GeckoView, Android Components | Not the desktop browser | 550,595 |
+| `third_party/python/` | Vendored Python packages (pip, setuptools, pygments, aiohttp with its C code, ...) | Used by the build system and the tools, not by the browser | 891,420 |
+| `third_party/node/` | Vendored Node packages (webpack, Babel and their dependencies) | Run at build time to bundle code; new at 157 | 706,931 |
+| `python/` | mach, mozbuild, mozlint and the other Mozilla Python tools; vendored Python packages too before 55 | Build system and developer tools | 103,933 |
+| `tools/@types/` | TypeScript declaration files (`.d.ts`) describing Gecko's APIs | Only type-check the JavaScript; never compiled or shipped | 84,999 |
+| `taskcluster/` | The CI task graph, its Docker images and CI scripts | Continuous integration | 44,332 |
+| `tools/lint/` | The linters: ESLint configuration and plugins, Python and Rust lint code | Developer tooling | 21,607 |
+| `build/clang-plugin/` | Mozilla's clang static-analysis plugin | Runs inside the compiler; not part of the browser | 12,311 |
+| `build/pgo/` | The pages and server used to train profile-guided-optimisation builds | Build-time training input | 11,735 |
+| `tools/tryselect/` | `mach try`, which picks the CI jobs to run on the try server | Developer tooling | 9,442 |
+| `docs/` | The Firefox source documentation (Sphinx configuration and extensions) | Documentation | 1,694 |
+
+The ten tooling prefixes remove 1,888,404 lines at 157, most of them vendored (`third_party/python/` and
+`third_party/node/` together 1,598,351): 956,435 Python lines, 702,552 JavaScript, 105,951 TypeScript, 94,744 C,
+13,384 C++ and headers, 12,896 HTML/CSS and 2,442 Rust (`tools/lint` 1,835, `taskcluster` 607). Not everything under `build/` and `tools/` is tooling, so
+those directories are not excluded as a whole: `tools/profiler/` is the Gecko Profiler, compiled into the browser
+(47,628 lines at 157); `tools/fuzzing/` and `tools/performance/` are compiled into Gecko too; `build/unix/` holds
+elfhack and stdc++compat, which end up in Linux builds; `build/rust/` holds small crates linked into libxul; and
+`build/stlport/` (releases 46 to 51, 85,629 lines) was the C++ runtime of Android builds. `config/` (5,614 lines at
+157) mixes build scripts with wrapper headers used when compiling the browser, so it stays as well.
 
 A path is a test path if any of these hold:
 
@@ -141,11 +170,11 @@ A path is a test path if any of these hold:
 Limits of the test rules:
 
 - They were derived by hand from **today's tree**. Older trees used other directory names, so **Browser-files values
-  for older releases are less reliable**.
+  for older releases are less reliable**. The same holds for the tooling prefixes (see "Known limitations").
 - They work on paths only. Test code inside other files is not removed: inline Rust `#[cfg(test)]` modules, for
   example, count as Browser files.
 - The difference between the two views is not "the tests": All files minus Browser files is the test files plus
-  everything under `mobile/`.
+  everything under `mobile/` and the tooling prefixes.
 
 ## Releases and dates
 
@@ -190,25 +219,27 @@ A failure in steps 1 to 3 commits and deploys nothing.
 One header line, then one release per line (a new release is a one-line diff). Shortened:
 
 ```
-{"method_version":3,"browser_excluded_prefixes":["mobile/"],"header_split":{"c":0.185,"cpp":0.815},"releases":[
+{"method_version":4,"browser_excluded_prefixes":["mobile/","build/clang-plugin/","build/pgo/","docs/","python/",
+ "taskcluster/","third_party/node/","third_party/python/","tools/@types/","tools/lint/","tools/tryselect/"],
+ "header_split":{"c":0.185,"cpp":0.815},"releases":[
 {"v":157,"tag":"FIREFOX_157_0_RELEASE","sha":"fdd757a2...","date":"2026-09-24",
  "all":{"rust":6172779,"c":3992382,"cpp":8522133,"h":5075167,"js":16228932,"ts":532871,"html":6838595,"py":2159226,
         "java":147346,"kt":1048566,"asm":531802},
- "browser":{"rust":5616315,"c":3889947,"cpp":7742052,"h":4858882,"js":2973279,"ts":173155,"html":195821,"py":1275464,
+ "browser":{"rust":5613873,"c":3795203,"cpp":7732935,"h":4854615,"js":2270727,"ts":67204,"html":182925,"py":319029,
             "java":55497,"kt":72324,"asm":531363}}
 ]}
 ```
 
 | Field | Meaning |
 |---|---|
-| `method_version` | Version of the counting rules the records were made with (3) |
-| `browser_excluded_prefixes` | Path prefixes skipped in Browser files (`mobile/`); All files skips no path |
+| `method_version` | Version of the counting rules the records were made with (4) |
+| `browser_excluded_prefixes` | Path prefixes skipped in Browser files (`mobile/` and the ten tooling prefixes); All files skips no path. `append` and `build-site` read the list from here, so new records follow the stored one |
 | `header_split` | Share of `h` lines given to C and to C++ at display time |
 | `v`, `tag`, `sha`, `date` | Major version, the tag counted, its commit and the commit's date |
 | `all`, `browser` | Lines per language key in each view; `c` and `cpp` exclude `.h` headers, which are `h`; `js` and `ts`, `java` and `kt` are separate |
 
-Totals are not stored: a total is the sum of the eleven language keys. `all` minus `browser` is the lines of test files
-and of `mobile/` together, not the test lines alone.
+Totals are not stored: a total is the sum of the eleven language keys. `all` minus `browser` is the lines of test files,
+of `mobile/` and of the tooling prefixes together, not the test lines alone.
 
 ### `build/data.json` (deployed as `data.json`)
 
@@ -218,8 +249,9 @@ language at the head, All files, headers split). Consumers should sum only the e
 
 ### Changing the method
 
-`method_version` is 3: the rules described here, which count Kotlin (`.kt`), TypeScript (`.ts`), `.hpp` and `.hh` as
-C++ and `.S` and `.s` as Assembly, and count a blob with a NUL byte as 0 lines. Any change to the rules (the counted
+`method_version` is 4: the rules described here, which count Kotlin (`.kt`), TypeScript (`.ts`), `.hpp` and `.hh` as
+C++ and `.S` and `.s` as Assembly, count a blob with a NUL byte as 0 lines, and leave `mobile/` and the ten tooling
+prefixes out of Browser files. Any change to the rules (the counted
 extensions, the test rules, the excluded prefixes or how lines are counted) bumps it and requires regenerating every
 release, so all stored records always follow one set of rules. Changing the `header_split` ratio is not a bump:
 headers are stored raw, so the new ratio applies to every release at display time; say so in the commit that changes
@@ -256,12 +288,44 @@ versions; compare it with the committed file whenever `method_version` changes.
 | Binary `.ts` files at 157 | 9 MPEG transport streams, 33,851 newline bytes, count 0: TypeScript in All files is 532,871 lines (566,722 in all `.ts` files minus 33,851) |
 | Binary rule, against counts made without it (the keys `rust` `c` `h` `js` `html` `py` `java`, every release) | Browser files identical; All files lower only in Rust (57 lines, 119 to 157), JavaScript and HTML/CSS, at most 1,634 lines together in a release |
 | `.hpp` `.hh` `.S` `.s` at 157 | All files `cpp` grows by exactly their 714,955 lines and `asm` by their 235,839: none of them is binary |
+| Tooling prefixes, against the previous rules (`mobile/` only), every release | `v`, `tag`, `sha`, `date` and All files identical; Browser files lower by exactly the non-test lines under the ten tooling prefixes, per language |
+| Independent recount at 46, 60, 125 and 157 (own `git ls-tree`/`git cat-file` loop, own extension map and NUL rule, the same test rules) | All files and Browser files equal to the stored records |
+| Shipped code under `tools/` and `build/` at 157 | Still in Browser files: `tools/profiler` 47,628 lines, `tools/fuzzing` 15,366, `tools/performance` 1,381, `build/unix` 4,632, `build/rust` 1,595 |
+
+## Reading the series
+
+Some steps in the charts are real changes to the repository, not counting artefacts. Three are known:
+
+- **Release 71, Java.** In All files Java falls from 551,092 to 161,770 lines: Fennec, the old Firefox for Android
+  UI, was removed from mozilla-central (Bug 1580356, commit `997b7d114877`; 2,147 `.java` files, 345,851 lines under
+  `mobile/android/` in `thirdparty`, `base`, `services`, `app` and `stumbler`), and so were the Robocop tests (Bug
+  1580832). All of it was under `mobile/`, so Browser files are not affected by them. Browser files have their own,
+  smaller Java step at 71 (49,147 to 26,423 lines): the WebRTC Android SDK (`media/webrtc/trunk/webrtc/sdk/android`,
+  about 22,700 lines) was removed (Bug 1588346). About 5,500 of those lines came back at 75 (Bug 1578073).
+- **Release 126, Kotlin.** In All files Kotlin jumps from 36,678 to 615,415 lines because the firefox-android
+  repository (Android Components, Fenix, Focus) was merged into mozilla-central on 2024-03-18 (Bug 1822248, commit
+  `3b8cd5f81382`). Release 125 is counted at `FIREFOX_125_0_BUILD1`, whose branch was cut about an hour before the
+  merge, so no 125 tag could include it. Java barely moves (278,159 to 279,504).
+- **Java/Kotlin as one series.** Because of the two steps above, the combined Java/Kotlin series in All files falls at
+  71 and rises at 126. In Browser files it stays small and almost flat (56,542 lines at 126; the only visible step is
+  the WebRTC SDK at 71), because the Android code is under `mobile/`.
 
 ## Known limitations and biases
 
 - **Test rules fit today's tree** (see above); the older a release, the less reliable its Browser-files value.
+- **The tooling prefixes are hand-picked and written for today's tree.** They name directories, not files, and the
+  list is short on purpose; it is not a complete inventory of tooling. Vendored tooling under other names stays in
+  Browser files: `third_party/chromium/build/` (100,402 lines at 157), `intl/icu/source/tools/` (82,405) or
+  `third_party/libwebrtc/tools/`, for example. Matching directory names instead would be wrong: `xpcom/build/`,
+  `memory/build/` and pdf.js's `content/build/` are shipped code. In older releases: before 55 the vendored Python
+  packages lived in `python/` (215,814 lines at 54, 44,361 at 55 when `third_party/python/` appeared with 150,457),
+  which both prefixes cover; `third_party/python/` changes in large steps as packages are added and removed (for
+  example +275k lines at 61, -314k at 82, +209k at 96, -229k at 149, +171k at 152); `tools/@types/` exists from 125
+  and `third_party/node/` only from 157. Tooling that only older trees had is not on the list: `build/pymake/`
+  (5,817 lines, 46 to 78), `tools/check-moz-style/` (4,202, 46 to 52) and `build/mobile/` (up to 10,237, 46 to 85,
+  mostly Java).
 - **Paths, not builds.** Neither view knows what a given build compiles or ships; Browser files includes code for
-  every platform and every vendored library in the tree.
+  every platform and every vendored library in the tree outside the tooling prefixes.
 - **The header split is one fixed ratio** for all releases and both views.
 - **Extensions left out** (`.mm`, `.inc`, `.kts`, ...) are in neither the numerator nor the total.
 - **The binary rule is one test** (a NUL byte anywhere in the blob). A text file saved as UTF-16 contains NUL bytes too
@@ -281,9 +345,10 @@ It does not say:
 - **How much Rust Mozilla wrote.** Vendored crates are included, wherever they come from.
 - **How much of the running browser is Rust.** Lines are not machine code, and neither view is limited to what a
   build compiles.
-- **That other languages did not change.** A share moves when any language moves: JavaScript in Browser files, for
-  example (key `js`, without TypeScript), grew from 2,299,867 lines at 156 to 2,973,279 at 157.
+- **That other languages did not change.** A share moves when any language moves: at 151, for example, Rust in
+  Browser files grew by 16,427 lines and its share still fell from 21.22% to 20.83%, because C++ (key `cpp`, without
+  headers) grew by 407,494 lines.
 - **Anything about files the extension set leaves out.** They are in neither the numerator nor the total.
 - **The same thing in both views.** All files is dominated by tests and test data and includes the Android code;
-  Browser files (20.5% Rust at 157, against 12.0% in All files) is what the repository holds outside the mobile apps
-  and the tests.
+  Browser files (22.0% Rust at 157, against 12.0% in All files) is what the repository holds outside the mobile apps,
+  the listed tooling directories and the tests.

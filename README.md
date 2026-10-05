@@ -11,8 +11,10 @@ Firefox 46 to the current head of the default branch. It has four tabs:
 - **Pie**: one release at a time, with the change against the previous one.
 
 Each tab offers two views: **All files** (every tracked file, `mobile/` included) and **Browser files** (the same
-without `mobile/` and without test files; desktop code for every platform, vendored code, build tooling and docs
-included). The (?) next to the view switch on the page explains them briefly.
+without `mobile/`, without ten build and developer tooling directories such as `python/`, `third_party/python/`,
+`third_party/node/` and `taskcluster/`, and without test files; desktop code for every platform and the other vendored
+code included). The (?) next to the view switch on the page explains them briefly; the methodology lists the
+excluded directories and why.
 
 **How the numbers are made, and how far to trust them: [`docs/methodology.md`](docs/methodology.md)**, published with
 the site as [methodology.html][methodology]. It covers the counting rules, the extension and test rules, the header
@@ -45,7 +47,8 @@ for the subcommands, the language and test rules, and the release set.
 
 ```
 {"meta_date":"2026-10-05T22:12:00+00:00","title_date":"Oct 2026","lang":[{"name":"Rust","loc":...}, ...],
- "method_version":3,"browser_excluded_prefixes":["mobile/"],"header_split":{"c":0.185,"cpp":0.815},
+ "method_version":4,"browser_excluded_prefixes":["mobile/","build/clang-plugin/",...,"tools/tryselect/"],
+ "header_split":{"c":0.185,"cpp":0.815},
  "releases":[{"v":46,"tag":"FIREFOX_46_0_RELEASE","sha":"...","date":"2016-04-21",
               "all":{"rust":...,"c":...,"cpp":...,"h":...,"js":...,"ts":...,"html":...,"py":...,"java":...,"kt":...,
                      "asm":...},

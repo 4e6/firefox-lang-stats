@@ -158,8 +158,7 @@ const LANGS = [
 ];
 const VIEWS = [
   { k: 'all', name: 'All files', long: 'All tracked files' },
-  { k: 'nontest', name: 'Non-test files', long: 'Non-test files' },
-  { k: 'artifact', name: 'Browser artifact', long: 'Browser artifact (Linux x86-64)' }
+  { k: 'browser', name: 'Browser files', long: 'Browser files' }
 ];
 const TABS = [
   { k: 'comp', name: 'Composition', title: 'What Firefox is made of' },
@@ -167,8 +166,8 @@ const TABS = [
   { k: 'share', name: 'Language share', title: null },
   { k: 'pie', name: 'Pie', title: 'One release at a time' }
 ];
-const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'asm'];   // only these are summed; sha and source are metadata
-const st = { tab: 'comp', view: 'nontest', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
+const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'asm'];   // only these are summed
+const st = { tab: 'comp', view: 'browser', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
 let D = null;          // display data, built from data.json
 let HAS = {};          // view key -> has any data
 
@@ -182,7 +181,6 @@ const exact = n => n == null ? '–' : Math.round(n).toLocaleString('en-US');
 const axisFmt = t => t === 0 ? '0' : d3.format('~s')(t);
 const viewOf = k => VIEWS.find(v => v.k === k);
 const langOf = k => LANGS.find(l => l.k === k);
-const notCounted = (view, k) => view === 'artifact' && k === 'Assembly';
 
 /* ---------- data: data.json -> display structure ---------- */
 function convert(b, split) {
@@ -193,18 +191,17 @@ function convert(b, split) {
   o.total = LANGS.reduce((a, L) => a + o[L.k], 0);
   return o.total > 0 ? o : null;
 }
-const artSha = a => a && typeof a === 'object' && typeof a.sha === 'string' ? a.sha : null;
 function build(data) {
   if (!data || !Array.isArray(data.releases)) throw new Error('data.json has no "releases" list');
   const hs = data.header_split || {};
   const split = { c: typeof hs.c === 'number' ? hs.c : 0.185, cpp: typeof hs.cpp === 'number' ? hs.cpp : 0.815 };
   const rel = data.releases.filter(r => r && Number.isFinite(+r.v)).slice().sort((a, b) => a.v - b.v);
   const pts = rel.map(r => ({ v: +r.v, label: String(r.v), title: 'Firefox ' + r.v, date: r.date, head: false,
-    asha: artSha(r.artifact), views: { all: convert(r.all, split), nontest: convert(r.nontest, split), artifact: convert(r.artifact, split) } }));
+    views: { all: convert(r.all, split), browser: convert(r.browser, split) } }));
   if (data.head && typeof data.head === 'object') {
     const h = data.head;
     pts.push({ v: null, label: 'head', title: 'Head' + (h.date ? ' (' + h.date + ')' : ''), date: h.date, sha: h.sha, head: true,
-      asha: artSha(h.artifact), views: { all: convert(h.all, split), nontest: convert(h.nontest, split), artifact: convert(h.artifact, split) } });
+      views: { all: convert(h.all, split), browser: convert(h.browser, split) } });
   }
   if (!pts.length) throw new Error('data.json has no releases');
   return { pts, N: pts.length, LAST: pts.length - 1, split, data };
@@ -218,16 +215,10 @@ const lastIdx = view => { for (let i = D.LAST; i >= 0; i--) if (D.pts[i].views[v
 const lab = i => D.pts[i].label;
 const ttl = i => D.pts[i].title;
 const isolated = (arr, j) => arr[j] != null && (j === 0 || arr[j - 1] == null) && (j === arr.length - 1 || arr[j + 1] == null);
-const sha7 = s => (s || '').slice(0, 7);
-// The head's artifact is counted at the build's own commit, usually a little older than the head commit.
-const artNote = i => { const p = D.pts[i]; if (!p.head || !p.asha || !rec('artifact', i)) return null;
-  return 'Browser artifact counted at the latest finished mozilla-central build, commit ' + sha7(p.asha)
-    + (p.asha === p.sha ? ' (the same commit as the head).' : ' (the head is ' + sha7(p.sha) + ').'); };
-const artNoteFor = (view, i) => view === 'artifact' ? artNote(i) : null;
 // a point drawn as a marker: alone, or in a run of two (a two-point line is too short to see on a long axis)
 const shortRun = (arr, j) => { if (arr[j] == null) return false; let a = j, b = j;
   while (a > 0 && arr[a - 1] != null) a--; while (b < arr.length - 1 && arr[b + 1] != null) b++; return b - a < 2; };
-const cellVal = (view, k, i, isS) => notCounted(view, k) && rec(view, i) ? 'not counted' : isS ? pct(share(view, k, i)) : exact(val(view, k, i));
+const cellVal = (view, k, i, isS) => isS ? pct(share(view, k, i)) : exact(val(view, k, i));
 
 /* ---------- shared chart parts ---------- */
 function xDomain(f0) { return f0 < D.LAST ? [f0, D.LAST] : [f0 - 1, f0]; }
@@ -251,7 +242,7 @@ function tipShow(wrap, x, y, title, rows, note) {
   t.appendChild(el('div', 't', title));
   for (const r of rows) {
     const row = el('div', 'r');
-    const k = el('span', 'k'); k.style.borderTopColor = r.color; if (r.dash) k.style.borderTopStyle = 'dashed';
+    const k = el('span', 'k'); k.style.borderTopColor = r.color;
     row.appendChild(k); row.appendChild(el('span', 'n', r.name)); row.appendChild(el('span', 'v', r.value));
     t.appendChild(row);
   }
@@ -287,10 +278,10 @@ function seg(label, opts, cur, on) {
   }
   g.appendChild(s); return g;
 }
-const viewSeg = () => { const g = seg('View', VIEWS.map(v => ({ k: v.k, name: v.name, title: v.long,
-  disabled: !HAS[v.k], why: 'No browser-artifact data yet' })), st.view, k => { st.view = k; render(); }); helpButton(g); return g; };
+const viewSeg = () => { const g = seg('View', VIEWS.map(v => ({ k: v.k, name: v.name, title: v.long })), st.view,
+  k => { st.view = k; render(); }); helpButton(g); return g; };
 
-/* ---------- the (?) next to the view switch: what the three views count ---------- */
+/* ---------- the (?) next to the view switch: what the two views count ---------- */
 let help = null;   // { btn, pop, open } in the current panel; the panel is rebuilt on every render, which closes it
 function para(parts) {   // a <p> from strings and [tag, text, href] pieces, built without innerHTML
   const p = el('p');
@@ -302,18 +293,12 @@ function para(parts) {   // a <p> from strings and [tag, text, href] pieces, bui
 }
 function helpFill(pop) {
   const sp = D.split, f = v => (v * 100).toFixed(1) + '%';
-  pop.appendChild(para([['b', 'All files'], ': every file tracked by git at the release tag (or the current head), counted by file extension. Lines are newline counts, not lines of code. Header files (',
-    ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp) + ' C++.']));
-  pop.appendChild(para([['b', 'Non-test files'], ': the same, minus files under test directories or with test file names. The rules were written for today\'s tree; older trees used other names, so values for older releases are less reliable.']));
-  const withArt = D.pts.filter(p => p.views.artifact), rels = withArt.filter(p => !p.head).map(p => p.v), hasHead = withArt.some(p => p.head);
-  const cover = !withArt.length ? 'No release has this data yet.'
-    : 'Available for ' + (rels.length ? (rels.length === 1 ? 'release ' : 'releases ') + rels.join(', ') : '') + (rels.length && hasHead ? ' and ' : '')
-      + (hasHead ? 'the head' : '') + (rels.length ? '; a release\'s artifact is counted at its release tag from Mozilla\'s release build.' : '.');
-  const hn = headArtNote();
-  pop.appendChild(para([['b', 'Browser artifact'], ': only the source files compiled into the Linux x86-64 desktop Firefox binaries (from the debug symbols of Mozilla\'s own build), plus the JavaScript, HTML and CSS inside its ',
-    ['code', 'omni.ja'], ' archives, counted as shipped (bundled and preprocessed). ' + cover + (hn ? ' ' + hn.replace('Browser artifact counted', 'The head\'s artifact is counted') : '')
-    + ' Assembly is not covered ("not counted"); Python and Java do not ship.']));
-  pop.appendChild(para([['code', 'mobile/'], ' is excluded from every view. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
+  pop.appendChild(para([['b', 'All files'], ': every file tracked by git at the release tag (or the current head), counted by file extension, ',
+    ['code', 'mobile/'], ' included. Lines are newline counts, not lines of code.']));
+  pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (the Android and iOS code) and minus files matched by the test rules. '
+    + 'It keeps the desktop code for every platform, plus vendored third-party code, build tooling and docs. The test rules were written for today\'s tree, so values for older releases are less reliable.']));
+  pop.appendChild(para(['Header files (', ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp)
+    + ' C++. Kotlin is not counted. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
 }
 function helpButton(host) {
   const btn = el('button', 'help', '?'); btn.type = 'button';
@@ -387,8 +372,8 @@ function drawStack(wrap) {
     cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
     if (!rec(view, i)) { tipShow(wrap, x(i), m.t + 40, ttl(i), [{ color: css('--axis'), name: 'No data in this view', value: '' }]); return; }
     const rs = LANGS.slice().reverse().map(L => ({ color: css(L.c), name: L.name,
-      value: notCounted(view, L.k) ? 'not counted' : pct(share(view, L.k, i)) + ' · ' + exact(val(view, L.k, i)) }));
-    tipShow(wrap, x(i), m.t + 40, ttl(i) + ' · ' + exact(total(view, i)) + ' lines', rs, artNoteFor(view, i));
+      value: pct(share(view, L.k, i)) + ' · ' + exact(val(view, L.k, i)) }));
+    tipShow(wrap, x(i), m.t + 40, ttl(i) + ' · ' + exact(total(view, i)) + ' lines', rs);
   };
   const leave = () => { cross.setAttribute('visibility', 'hidden'); tipHide(wrap); };
   overlay.addEventListener('pointermove', e => hover(idxFrom(svg, x, W, e, f0)));
@@ -400,8 +385,8 @@ function drawStack(wrap) {
 function drawMultiples(wrap) {
   wrap.textContent = '';
   const view = st.view, f0 = firstIdx(view), li = lastIdx(view), isS = st.dmode === 'share';
-  const V = (k, i) => notCounted(view, k) ? null : isS ? share(view, k, i) : val(view, k, i), F = isS ? pct : lines;
-  const head = (k, i) => !rec(view, i) ? 'no data' : notCounted(view, k) ? 'not counted' : F(V(k, i));
+  const V = (k, i) => isS ? share(view, k, i) : val(view, k, i), F = isS ? pct : lines;
+  const head = (k, i) => !rec(view, i) ? 'no data' : F(V(k, i));
   const grid = el('div', 'mini-grid'); wrap.appendChild(grid);
   const panels = [];
   for (const L of LANGS) {
@@ -414,7 +399,7 @@ function drawMultiples(wrap) {
     const maxS = d3.max(D.pts, (_, i) => V(L.k, i) || 0) || 0;
     const y = d3.scaleLinear().domain([0, Math.max(maxS, 1e-9) * 1.08]).range([H - m.b, m.t]);
     svgEl(svg, 'line', { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: css('--axis') });
-    const tm = svgEl(svg, 'text', { x: W - m.r, y: 10, 'text-anchor': 'end' }); tm.textContent = notCounted(view, L.k) ? '' : 'peak ' + F(maxS);
+    const tm = svgEl(svg, 'text', { x: W - m.r, y: 10, 'text-anchor': 'end' }); tm.textContent = 'peak ' + F(maxS);
     const pts = []; for (let i = f0; i <= D.LAST; i++) pts.push([i, V(L.k, i)]);
     const def = d => d[1] != null;
     svgEl(svg, 'path', { d: d3.area().defined(def).x(d => x(d[0])).y0(y(0)).y1(d => y(d[1]))(pts) || '', fill: css(L.c), opacity: .18 });
@@ -438,34 +423,32 @@ function drawMultiples(wrap) {
     else { p.dot.setAttribute('cx', p.x(i)); p.dot.setAttribute('cy', p.y(v)); p.dot.setAttribute('visibility', 'visible'); }
     p.vv.textContent = lab(i) + ' · ' + head(p.L.k, i);
   });
-  wrap.appendChild(el('p', 'cap', 'Each panel has its own vertical scale starting at zero; compare sizes by the numbers, not the heights. Values at ' + (li >= 0 ? ttl(li) : '–') + '.'
-    + (li >= 0 && artNoteFor(view, li) ? ' ' + artNoteFor(view, li) : '')));
+  wrap.appendChild(el('p', 'cap', 'Each panel has its own vertical scale starting at zero; compare sizes by the numbers, not the heights. Values at ' + (li >= 0 ? ttl(li) : '–') + '.'));
 }
 
-/* ---------- 3. Language share: one language, three series ---------- */
+/* ---------- 3. Language share: one language, two series ---------- */
 const SERIES = [
-  { k: 'nontest', name: 'Non-test files', short: 'Non-test', w: 2.75, dash: null },
-  { k: 'all', name: 'All tracked files', short: 'All files', w: 1.75, dash: null },
-  { k: 'artifact', name: 'Browser artifact (Linux x86-64)', short: 'Artifact', w: 2.25, dash: '6 4' }
+  { k: 'browser', name: 'Browser files', short: 'Browser files', w: 2.75 },
+  { k: 'all', name: 'All tracked files', short: 'All files', w: 1.75 }
 ];
 function seriesKey() {
   const lg = el('div', 'legend'), col = css(langOf(st.lang).c);
   for (const s of SERIES) {
     const it = el('span', 'it'), ln = el('span', 'ln');
-    ln.style.borderTopColor = col; ln.style.borderTopWidth = s.w + 'px'; if (s.dash) ln.style.borderTopStyle = 'dashed';
+    ln.style.borderTopColor = col; ln.style.borderTopWidth = s.w + 'px';
     it.appendChild(ln); it.appendChild(document.createTextNode(s.name + (HAS[s.k] ? '' : ': no data yet')));
     lg.appendChild(it);
   }
-  helpButton(lg);   // this tab has no View switch; its key names the three views instead
+  helpButton(lg);   // this tab has no View switch; its key names the two views instead
   return lg;
 }
 function drawLangShare(wrap) {
   wrap.textContent = '';
   const lang = st.lang, LL = langOf(lang), col = css(LL.c), isS = st.ascale === 'share';
-  const V = (vk, i) => notCounted(vk, lang) ? null : isS ? share(vk, lang, i) : val(vk, lang, i), F = isS ? pct : lines;
+  const V = (vk, i) => isS ? share(vk, lang, i) : val(vk, lang, i), F = isS ? pct : lines;
   const W = Math.max(300, wrap.clientWidth), H = W < 520 ? 280 : 340;
   const m = { t: 14, r: W < 520 ? 64 : 150, b: 30, l: 46 };
-  const svg = svgEl(wrap, 'svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': LL.name + (isS ? ' share' : ' lines') + ' by release in three series', tabindex: 0 });
+  const svg = svgEl(wrap, 'svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': LL.name + (isS ? ' share' : ' lines') + ' by release in two series', tabindex: 0 });
   const x = d3.scaleLinear().domain(xDomain(0)).range([m.l, W - m.r]);
   const maxv = d3.max(SERIES, s => d3.max(D.pts, (_, i) => V(s.k, i) || 0)) || 0;
   const y = d3.scaleLinear().domain([0, Math.max(maxv, 1e-9) * 1.1]).range([H - m.b, m.t]).nice();
@@ -479,9 +462,8 @@ function drawLangShare(wrap) {
   const ln = d3.line().defined(d => d[1] != null).x(d => x(d[0])).y(d => y(d[1]));
   const labels = [];
   for (const s of SERIES) {
-    const pts = D.pts.map((_, i) => [i, V(s.k, i)]), on = s.k === 'nontest', ys = pts.map(p => p[1]);
-    const p = svgEl(svg, 'path', { d: ln(pts) || '', fill: 'none', stroke: col, 'stroke-width': on ? s.w + 1 : s.w, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: on ? 1 : .6 });
-    if (s.dash) p.setAttribute('stroke-dasharray', s.dash);
+    const pts = D.pts.map((_, i) => [i, V(s.k, i)]), on = s.k === 'browser', ys = pts.map(p => p[1]);
+    svgEl(svg, 'path', { d: ln(pts) || '', fill: 'none', stroke: col, 'stroke-width': on ? s.w + 1 : s.w, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: on ? 1 : .6 });
     pts.forEach((q, j) => { if (shortRun(ys, j)) svgEl(svg, 'circle', { cx: x(q[0]), cy: y(q[1]), r: 3.5, fill: 'none', stroke: col, 'stroke-width': 2, opacity: on ? 1 : .8 }); });
     let li = D.LAST; while (li >= 0 && ys[li] == null) li--;
     if (li >= 0) labels.push({ y: y(ys[li]), name: s.short, v: ys[li], on });
@@ -498,11 +480,11 @@ function drawLangShare(wrap) {
     cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
     const rows = SERIES.map((s, j) => {
       const v = V(s.k, i);
-      if (v == null) { dots[j].setAttribute('visibility', 'hidden'); return { color: col, dash: !!s.dash, name: s.name, value: notCounted(s.k, lang) && rec(s.k, i) ? 'not counted' : 'no data' }; }
+      if (v == null) { dots[j].setAttribute('visibility', 'hidden'); return { color: col, name: s.name, value: 'no data' }; }
       dots[j].setAttribute('cx', x(i)); dots[j].setAttribute('cy', y(v)); dots[j].setAttribute('visibility', 'visible');
-      return { color: col, dash: !!s.dash, name: s.name, value: pct(share(s.k, lang, i)) + ' · ' + exact(val(s.k, lang, i)) };
+      return { color: col, name: s.name, value: pct(share(s.k, lang, i)) + ' · ' + exact(val(s.k, lang, i)) };
     });
-    tipShow(wrap, x(i), m.t + 30, ttl(i) + ' · ' + LL.name, rows, artNote(i));
+    tipShow(wrap, x(i), m.t + 30, ttl(i) + ' · ' + LL.name, rows);
   };
   const leave = () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tipHide(wrap); };
   const overlay = svgEl(svg, 'rect', { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent', style: 'cursor:crosshair' });
@@ -528,7 +510,7 @@ function drawPie(wrap, i) {
   const arc = d3.arc().innerRadius(0).outerRadius(r);
   for (const a of arcs) {
     const p = svgEl(g, 'path', { d: arc(a), fill: css(a.data.L.c), stroke: css('--bg'), 'stroke-width': 2 });
-    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v) }], artNoteFor(view, i)); });
+    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v) }]); });
     p.addEventListener('pointerleave', () => tipHide(left));
   }
   const right = el('div'); grid.appendChild(right);
@@ -539,7 +521,6 @@ function drawPie(wrap, i) {
     const tr = el('tr'), c0 = el('td'), sw = el('span');
     sw.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;background:var(' + L.c + ')';
     c0.appendChild(sw); c0.appendChild(document.createTextNode(L.name)); tr.appendChild(c0);
-    if (notCounted(view, L.k)) { const td = el('td', 'mono gap', 'not counted'); td.colSpan = 3; tr.appendChild(td); t.appendChild(tr); continue; }
     tr.appendChild(el('td', 'mono', pct(share(view, L.k, i)))); tr.appendChild(el('td', 'mono', exact(val(view, L.k, i))));
     let dd = '–';
     if (pi != null) { const d = (share(view, L.k, i) - share(view, L.k, pi)) * 100; const a = Math.abs(d).toFixed(1); dd = (+a === 0 ? '±' : d > 0 ? '+' : '−') + a + ' pp'; }
@@ -548,9 +529,8 @@ function drawPie(wrap, i) {
   const tr = el('tr'); tr.appendChild(el('td', null, 'Total')); tr.appendChild(el('td', 'mono', '100%')); tr.appendChild(el('td', 'mono', exact(total(view, i)))); tr.appendChild(el('td'));
   t.appendChild(tr);
   right.appendChild(t);
-  right.appendChild(el('p', 'cap', (pi != null ? 'Change: percentage points against ' + ttl(pi) + '.'
-    : i > 0 ? 'Change: no data for ' + ttl(i - 1) + ' in this view.' : 'Change: this is the first release.')
-    + (artNoteFor(view, i) ? ' ' + artNoteFor(view, i) : '')));
+  right.appendChild(el('p', 'cap', pi != null ? 'Change: percentage points against ' + ttl(pi) + '.'
+    : i > 0 ? 'Change: no data for ' + ttl(i - 1) + ' in this view.' : 'Change: this is the first release.'));
 }
 function stopPlay() { if (st.playing) { clearInterval(st.playing); st.playing = null; } }
 function pieScrubber(host, redraw) {
@@ -571,14 +551,12 @@ function pieScrubber(host, redraw) {
 }
 
 /* ---------- data tables: every value reachable without hovering ---------- */
-function details(summary, buildTable, note) {
+function details(summary, buildTable) {
   const d = el('details', 'dsum'); d.open = st.tableOpen; d.addEventListener('toggle', () => { st.tableOpen = d.open; });
   d.appendChild(el('summary', null, summary));
   const sc = el('div', 'scroll'), t = el('table', 'data'); sc.appendChild(t); buildTable(t); d.appendChild(sc);
-  if (note) d.appendChild(el('p', 'cap', note));
   return d;
 }
-const headArtNote = () => { const i = D.pts.findIndex(p => p.head); return i >= 0 ? artNote(i) : null; };
 function viewTable(isS) {
   const v = viewOf(st.view);
   return details('Show the data as a table (' + v.long + ', ' + (isS ? 'share' : 'lines') + ')', t => {
@@ -589,7 +567,7 @@ function viewTable(isS) {
       else { LANGS.forEach(L => tr.appendChild(el('td', 'mono', cellVal(st.view, L.k, i, isS)))); tr.appendChild(el('td', 'mono', exact(total(st.view, i)))); }
       t.appendChild(tr);
     }
-  }, st.view === 'artifact' ? headArtNote() : null);
+  });
 }
 function langTable() {
   const LL = langOf(st.lang), isS = st.ascale === 'share';
@@ -600,7 +578,7 @@ function langTable() {
       SERIES.forEach(s => { const ok = rec(s.k, i) != null; tr.appendChild(el('td', 'mono' + (ok ? '' : ' gap'), ok ? cellVal(s.k, st.lang, i, isS) : 'no data')); });
       t.appendChild(tr);
     }
-  }, headArtNote());
+  });
 }
 
 /* ---------- page ---------- */
@@ -644,7 +622,7 @@ function tabs() {
 }
 function render() {
   stopPlay();
-  if (!HAS[st.view]) st.view = HAS.nontest ? 'nontest' : 'all';
+  if (!HAS[st.view]) st.view = HAS.browser ? 'browser' : 'all';
   tabs(); panel();
 }
 
@@ -658,16 +636,12 @@ function header() {
   const data = D.data;
   if (data.title_date) document.getElementById('title-date').textContent = data.title_date;
   if (data.meta_date) document.querySelector('meta[name="date"]').setAttribute('content', data.meta_date);
-  const i = lastIdx('nontest'), j = lastIdx('all'), k = lastIdx('artifact');
+  const i = lastIdx('browser'), j = lastIdx('all');
   if (i >= 0) {
     const where = D.pts[i].head ? 'At the current head' : 'In ' + ttl(i);
-    const parts = ['<b>' + pct(share('nontest', 'Rust', i)) + '</b> of non-test lines'];
+    const parts = ['<b>' + pct(share('browser', 'Rust', i)) + '</b> of the lines in Browser files'];
     if (j === i) parts.push('<b>' + pct(share('all', 'Rust', j)) + '</b> of all tracked lines');
-    // the head's artifact comes from the latest finished build, whose commit can differ from the head's: name it
-    const ab = D.pts[k] && D.pts[k].head && /^[0-9a-f]{7,40}$/.test(D.pts[k].asha || '') ? ' (latest finished build, ' + sha7(D.pts[k].asha) + ')' : '';
-    if (k === i) parts.push('<b>' + pct(share('artifact', 'Rust', k)) + '</b> of the browser artifact' + ab);
-    const list = parts.length < 3 ? parts.join(' and ') : parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
-    document.getElementById('headline').innerHTML = where + ', Rust is ' + list + '.';
+    document.getElementById('headline').innerHTML = where + ', Rust is ' + parts.join(' and ') + '.';
   }
 }
 
@@ -684,7 +658,7 @@ async function main() {
     return;
   }
   for (const v of VIEWS) HAS[v.k] = D.pts.some(p => p.views[v.k] != null);
-  if (!HAS.all && !HAS.nontest) { fail('data.json contains no usable release records.'); return; }
+  if (!HAS.all && !HAS.browser) { fail('data.json contains no usable release records.'); return; }
   st.sel = D.LAST;
   header();
   render();

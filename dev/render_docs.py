@@ -3,18 +3,23 @@
 
   python3 dev/render_docs.py docs/methodology.md --page site/index.html --out build/methodology.html
 
-Standard library only, like the rest of dev/, so the weekly job installs nothing. The renderer is strict: it
-supports the Markdown subset the document uses and raises RenderError (exit status 1) on anything else, so a
-construct it does not understand fails the workflow's Build step before anything is committed or deployed, instead
-of being published garbled.
+Standard library only, like the rest of dev/, so the weekly job installs nothing. It renders the Markdown subset
+the document uses, and the document must stick to that subset. It raises RenderError (exit status 1) on the
+unsupported constructs listed below, so they fail the workflow's Test and Build steps before anything is committed
+or deployed; the constructs listed as not handled are NOT detected and would be published as literal text.
 
 Supported:
   blocks   # / ## / ### headings (one # heading, first); paragraphs; "- " lists and "1. " lists, one level, with
            indented continuation lines; pipe tables with a |---|---:| separator row; ``` fenced code blocks
   inline   `code` (opaque: nothing inside is interpreted), **bold**, [text](url) with an http(s):// or #anchor url
-Rejected: deeper headings, nested lists, block quotes, raw HTML, horizontal rules, setext headings, _ and single *
-emphasis (left as literal characters, which keeps names like FIREFOX_<n>_0_RELEASE intact), relative links,
-unbalanced backticks or **.
+Rejected (RenderError): #### and deeper headings, a second # heading, nested lists and other blocks inside list
+items, indented code, block quotes, raw HTML tags, horizontal rules, setext headings, "* " and "+ " lists, ~~~
+fences, images (![...]), tab-indented lines, relative or non-http(s) links, unbalanced backticks or **, malformed
+tables.
+Not handled, and not detected (shown literally): _ and single * emphasis (on purpose: names like
+FIREFOX_<n>_0_RELEASE stay intact), HTML entities (&amp; is escaped, so it shows as written), backslash escapes,
+~~strike~~, reference-style links, autolinks, unindented (lazy) continuation lines of list items (they start a new
+paragraph), hard line breaks.
 
 The colours come from the page itself: the CSS between /* tokens:begin */ and /* tokens:end */ in --page (light and
 dark tokens) is copied into the output, so both pages share one palette and one dark mode. The output makes no
@@ -53,6 +58,8 @@ def esc(s):
 
 def inline(text, where=''):
     """HTML of one block's text: code spans, links and bold; everything else escaped literally."""
+    if '![' in re.sub(r'`[^`]*`', '', text):
+        raise RenderError('%s: images are not supported: %r' % (where, text))
     out, pos, bold = [], 0, False
     for m in INLINE_RE.finditer(text):
         out.append(_plain(text[pos:m.start()], where))
@@ -144,6 +151,10 @@ def render_body(md):
     while i < n:
         line = lines[i]
         s = line.strip()
+        if line[:1] == '\t' or (s and line[:len(line) - len(line.lstrip())].count('\t')):
+            raise RenderError('%s: tab indentation is not supported; indent with spaces' % where(i))
+        if s.startswith('~~~'):
+            raise RenderError('%s: ~~~ fences are not supported; use ```' % where(i))
         if not s:
             flush()
             i += 1

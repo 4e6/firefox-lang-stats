@@ -82,6 +82,10 @@ class Blocks(unittest.TestCase):
             'table then text': '# A\n\n| a |\n|---|\n| 1 |\ntext\n',
             'ordered from 2': '# A\n\n2. two\n',
             'fence in list': '# A\n\n- x\n  ```\n',
+            'tilde fence': '# A\n\n~~~\ncode\n~~~\n',
+            'tab indent': '# A\n\n- x\n\tmore\n',
+            'tab first': '# A\n\n\tcode\n',
+            'image': '# A\n\nsee ![alt](https://example.org/a.png)\n',
         }
         for name, md in cases.items():
             with self.subTest(name), self.assertRaises(rd.RenderError):

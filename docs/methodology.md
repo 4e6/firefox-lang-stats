@@ -21,7 +21,7 @@ A release without data in a view is drawn as a gap, never as zero.
 The charts combine two pairs of languages: **JavaScript and TypeScript as one series, JavaScript/TypeScript**, and
 **Java and Kotlin as one series, Java/Kotlin**, so they show eight series for the ten languages: the page has eight
 series colours and does not add more. The data keeps each pair apart (`js` and `ts`, `java` and `kt`), and the
-page's tooltips and tables give the split.
+page's tooltips (and its tables, in Lines mode) give the split.
 
 Firefox 157 in Browser files, headers split as described below:
 
@@ -267,7 +267,7 @@ versions; compare it with the committed file whenever `method_version` changes.
 - **The binary rule is one test** (a NUL byte anywhere in the blob). A text file saved as UTF-16 contains NUL bytes too
   and counts 0 like a binary file; a binary file without any NUL byte would be counted.
 - **Two pairs share a series** on the charts (JavaScript/TypeScript, Java/Kotlin); the split is only in the tooltips,
-  the tables and the data.
+  the Lines-mode tables and the data.
 - **The head date.** If the head commit had a zero timestamp, the depth-1 checkout would not hold an ancestor with a
   real one and the build step would fail (unlike `append`, it does not fetch more history). This has not happened.
 

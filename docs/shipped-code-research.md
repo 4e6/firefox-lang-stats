@@ -369,7 +369,7 @@ other directory names, so earlier non-test values are less reliable than recent 
   into about 200 KB in git when stored as plain text, because git deltas similar lists. The JavaScript side does not
   expire: the release tarballs stay on `archive.mozilla.org/pub/firefox/releases/`.
 
-  Options for where to keep them (undecided):
+  Options for where to keep them (option 1 decided, see below):
 
   | Option | Cost | For | Against |
   |---|---|---|---|
@@ -379,9 +379,13 @@ other directory names, so earlier non-test values are less reliable than recent 
   | 4. Keep counts only | none | No upkeep | After a method change those releases are either frozen at the old method or dropped from the series |
   | 5. External archive (Zenodo, Internet Archive, own bucket) | none in the repo | Permanent, citable | A new outside dependency and a public upload for 200 KB of data |
 
-  Recommendation: option 1, for the expiring releases now. Whether to keep lists for every future release as insurance
-  is a separate choice: `candidates/` already lost builds 130-143 without explanation. At about 13 majors a year that is
-  about 1.5 MB a year as `.gz` files (no delta in git) or about 10 MB a year of plain text in the checkout.
+  **Decision: option 1, only for the expiring releases** (131.0.2 to 143 and 140.0esr to 140.3.1esr). The lists go in
+  `data/artifact-files/<version>.txt` on `main`: sorted repository paths, one per line, plain text so that git can delta
+  them. Lists are not kept for other releases. The file for a release whose symbols are still available elsewhere can be
+  rebuilt from `candidates/` or the release tarball, so only the expiring range needs a copy. If `candidates/` loses
+  more builds, a list can still be rebuilt only while its source exists, so a later loss means moving that release to
+  the same directory before it goes.  Provenance (tag, commit, symbol source, build id of each module) goes in the
+  release's `artifact` block in `history.json`, not in the list file.
 
 ## What is not counted
 
@@ -422,14 +426,15 @@ from the toolchains. The symbol approach does not see these as repo files.
 3. What "shipped" should mean for the chart: lines in files that contribute code (about 17% Rust), or machine-code
    bytes (libxul about 26% with the standard library, about 15% without)?
 4. Depend on Mozilla's CI artifacts in the weekly cron, with the static fallback if they are missing?
-5. Storage: keep raw header counts and a test/`third_party`/rest split now, or defer the split? Where to keep the
-   expiring symbol file lists (options below)? The weekly update is committed to `main` directly (decided).
+5. Storage: keep raw header counts and a test/`third_party`/rest split now, or defer the split? The weekly update is committed to `main` directly, and the expiring symbol file lists are kept in
+   `data/artifact-files/` on `main` for 131.0.2-143 and 140.0esr-140.3.1esr only (both decided).
 
 ## Suggested order
 
 1. Issue #6: path-based test exclusion plus `*.mjs`, showing "all" and "non-test" views.
-2. **Time-critical, independent of everything else:** extract and keep the symbol file lists (not the zips) for
-   releases 131.0.2-143 from the symbol server before they expire (see History).
+2. **Time-critical, independent of everything else:** extract the symbol file lists (not the zips) for releases
+   131.0.2-143 and 140.0esr-140.3.1esr from the symbol server before they expire, and commit them to
+   `data/artifact-files/` (see History and Storage design).
 3. Issue #10, tracked-file history for all major releases (about 8-9 minutes, measured, see History), stored as in
    Storage design, with the four views.
 4. Prototype the shipped series for the current version as a separate, clearly labelled chart.

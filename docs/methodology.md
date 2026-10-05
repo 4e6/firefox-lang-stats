@@ -161,11 +161,12 @@ Android builds. `config/` (5,614 lines at 157) mixes build scripts with wrapper 
 browser, so it stays as well.
 
 `third_party/node/` is not pure tooling. At 157 the new tab page's build script
-(`browser/extensions/newtab/build-newtab-bundles.py`) runs webpack on `third_party/node/node_modules`, and its
-vendor bundle (`content-src/vendor.mjs`) imports React, ReactDOM, Redux, React Redux, PropTypes and React Transition
-Group from there. Code from those packages (80,369 lines in the tree) therefore reaches the shipped new tab page in bundled form,
-yet the packages are left out of Browser files with the rest of the directory. A second copy of React and Redux, `toolkit/content/vendor/react/`
-(30,430 lines at 157, packaged by `toolkit/content/jar.mn`), is not under any excluded prefix and stays counted.
+(`browser/extensions/newtab/build-newtab-bundles.py`) runs webpack on `third_party/node/node_modules`, and its vendor
+bundle (`content-src/vendor.mjs`) imports React, ReactDOM, Redux, React Redux, PropTypes and React Transition Group
+from there. Code from those packages (80,369 lines in the tree) therefore reaches the shipped new tab page in bundled
+form, yet the packages are left out of Browser files with the rest of the directory. A second copy of React and Redux,
+`toolkit/content/vendor/react/` (30,430 lines at 157, packaged by `toolkit/content/jar.mn`), is not under any excluded
+prefix and stays counted.
 
 A path is a test path if any of these hold:
 

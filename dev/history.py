@@ -41,6 +41,13 @@ How to regenerate data/history.json from scratch (about 10 minutes and 3.5 GB of
 hours), then counts each distinct blob once. Rebuilding gives the same file apart from newly released versions;
 compare it with the committed file whenever METHOD_VERSION changes. The weekly job only runs `append` and
 `build-site`. Tests: python3 -m unittest discover -s dev
+
+`date` is the committer date of the counted commit. A few converted commits carry a zero timestamp (1970-01-01;
+FIREFOX_123_0_RELEASE is one); for those the date of the nearest first-parent ancestor with a real timestamp is stored,
+and counting fails rather than store 1970 when no such ancestor is present (a depth-1 clone).
+
+Requires git 2.44 or newer for `backfill` on a partial clone (GIT_NO_LAZY_FETCH); older git still gives correct
+counts but fetches missing blobs one at a time, which takes hours.
 """
 import argparse
 import json
@@ -89,6 +96,10 @@ TAG_PATTERNS = ('FIREFOX_*_0_RELEASE', 'FIREFOX_*_0_BUILD1')
 def no_lazy_fetch():
     """Environment for git commands that must not fetch missing objects one at a time (they are batched instead)."""
     return dict(os.environ, GIT_NO_LAZY_FETCH='1')
+
+
+class HistoryError(RuntimeError):
+    """A failure with a message meant for the user (printed without a traceback by the command line)."""
 
 
 def log(msg):
@@ -190,7 +201,7 @@ def count_lines(repo, oids):
     for oid in oids:
         h = p.stdout.readline().split()
         if not h:
-            raise RuntimeError('git cat-file ended early')
+            raise HistoryError('git cat-file ended early')
         if h[-1] == b'missing':
             missing.append(oid)
             continue
@@ -201,7 +212,7 @@ def count_lines(repo, oids):
     writer.join()
     p.stdout.close()
     if p.wait():
-        raise RuntimeError('git cat-file failed')
+        raise HistoryError('git cat-file failed')
     return lines, missing
 
 
@@ -233,7 +244,7 @@ def fetch_blobs(repo, oids, streams=4):
     """Fetch blobs of a partial clone by id, in `streams` parallel batched fetches."""
     remote = promisor_remote(repo)
     if not remote:
-        raise RuntimeError('%d blobs are missing and %s is not a partial clone' % (len(oids), repo))
+        raise HistoryError('%d blobs are missing and %s is not a partial clone' % (len(oids), repo))
     oids = sorted(oids)
     streams = max(1, min(streams, len(oids) // 1000 + 1))
     t0 = time.time()
@@ -250,8 +261,28 @@ def fetch_blobs(repo, oids, streams=4):
         failed += p.wait() != 0
         f.close()
     if failed:
-        raise RuntimeError('%d of %d blob fetches failed' % (failed, streams))
+        raise HistoryError('%d of %d blob fetches failed' % (failed, streams))
     log('fetched %d blobs in %d streams, %.0fs' % (len(oids), streams, time.time() - t0))
+
+
+def resolve_commit(repo, rev):
+    """The commit id `rev` points to (peeling annotated tags), or HistoryError if there is none."""
+    try:
+        return git(repo, 'rev-parse', '--verify', '-q', rev + '^{commit}').decode().strip()
+    except subprocess.CalledProcessError:
+        raise HistoryError('%s is not a commit in %s (empty repository or missing tag?)' % (rev, repo)) from None
+
+
+def commit_date(repo, sha, limit=100):
+    """Committer date (YYYY-MM-DD) of `sha`. A zero timestamp (a conversion artefact) is replaced by the date of the
+    nearest first-parent ancestor with a non-zero one; HistoryError if none is reachable (for example a shallow clone)."""
+    out = git(repo, 'log', '--first-parent', '-n', str(limit), '--format=%ct %cs', sha).decode()
+    for line in out.splitlines():
+        ct, cs = line.split()
+        if int(ct) != 0:
+            return cs
+    raise HistoryError('commit %s has a zero timestamp and none of its first %d first-parent ancestors present in %s '
+                       'has a real one; fetch more history (e.g. git fetch --deepen 10)' % (sha, limit, repo))
 
 
 def count_release(repo, rev, excludes=DEFAULT_EXCLUDES, cache=None, fetch=True):
@@ -262,17 +293,18 @@ def count_release(repo, rev, excludes=DEFAULT_EXCLUDES, cache=None, fetch=True):
     batch first (unless fetch=False)."""
     if cache is None:
         cache = {}
-    entries = list(tree(repo, rev, excludes))
+    sha = resolve_commit(repo, rev)
+    entries = list(tree(repo, sha, excludes))
     todo = sorted({oid for oid, _, _ in entries if oid not in cache})
     if todo:
         lines, missing = count_lines(repo, todo)
         if missing:
             if not fetch:
-                raise RuntimeError('%d blobs of %s are missing' % (len(missing), rev))
+                raise HistoryError('%d blobs of %s are missing' % (len(missing), rev))
             fetch_blobs(repo, missing)
             more, missing = count_lines(repo, missing)
             if missing:
-                raise RuntimeError('%d blobs of %s are still missing after the fetch' % (len(missing), rev))
+                raise HistoryError('%d blobs of %s are still missing after the fetch' % (len(missing), rev))
             lines.update(more)
         cache.update(lines)
     allc = dict.fromkeys(KEYS, 0)
@@ -282,9 +314,7 @@ def count_release(repo, rev, excludes=DEFAULT_EXCLUDES, cache=None, fetch=True):
         allc[lang] += n
         if not is_test(path):
             nont[lang] += n
-    sha = git(repo, 'rev-parse', '--verify', '-q', rev + '^{commit}').decode().strip()
-    date = git(repo, 'log', '-1', '--format=%cs', sha).decode().strip()
-    return {'sha': sha, 'date': date, 'all': allc, 'nontest': nont, 'artifact': None}
+    return {'sha': sha, 'date': commit_date(repo, sha), 'all': allc, 'nontest': nont, 'artifact': None}
 
 
 def release_record(v, tag, counted):
@@ -381,7 +411,8 @@ def append(history, repo, remote='origin'):
     meta, records = read_history(history)
     excludes = tuple(meta.get('excluded_prefixes', ()))
     have = {r['v'] for r in records}
-    todo = [(v, tag) for v, tag in pick_majors(remote_tags(repo, remote)) if v not in have]
+    first = min(have, default=FIRST_MAJOR)
+    todo = [(v, tag) for v, tag in pick_majors(remote_tags(repo, remote), first) if v not in have]
     if not todo:
         log('%s is current (%d releases)' % (history, len(records)))
         return 0
@@ -451,6 +482,14 @@ def main(argv=None):
     p.add_argument('--out', required=True, help='output directory (e.g. build)')
 
     a = ap.parse_args(argv)
+    try:
+        run(a, ap)
+    except HistoryError as e:
+        ap.exit(1, '%s: error: %s\n' % (ap.prog, e))
+    return 0
+
+
+def run(a, ap):
     if a.cmd == 'backfill':
         backfill(a.repo, a.out, resolve_excludes(a, ap), a.first, a.streams)
     elif a.cmd == 'append':
@@ -463,7 +502,6 @@ def main(argv=None):
             sys.stdout.write(text)
     elif a.cmd == 'build-site':
         build_site(a.history, a.repo, a.out)
-    return 0
 
 
 if __name__ == '__main__':

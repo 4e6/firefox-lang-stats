@@ -439,6 +439,71 @@ class AppendTest(GitTestCase):
                                    **history.count_release(self.up, 'FIREFOX_49_0_BUILD1')))
 
 
+class ZeroDateTest(GitTestCase):
+    """A commit with a zero timestamp (like FIREFOX_123_0_RELEASE) takes the date of its first dated ancestor."""
+
+    def repo(self):
+        r = os.path.join(self.mkdtemp(), 'zero')
+        os.makedirs(r)
+        git(r, 'init', '-q')
+        git(r, 'config', 'uploadpack.allowFilter', 'true')
+        write(r, 'a.rs', body(2))
+        git(r, 'add', '-A')
+        git(r, 'commit', '-q', '-m', 'dated', date='2024-02-13T05:05:35Z')
+        write(r, 'a.rs', body(3))
+        git(r, 'add', '-A')
+        git(r, 'commit', '-q', '-m', 'zero', date='@0 +0000')
+        git(r, 'tag', 'FIREFOX_123_0_RELEASE')
+        self.assertEqual(git(r, 'log', '-1', '--format=%ct %cs'), '0 1970-01-01')
+        return r
+
+    def test_zero_timestamp_uses_first_dated_ancestor(self):
+        r = self.repo()
+        rec = history.count_release(r, 'FIREFOX_123_0_RELEASE')
+        self.assertEqual(rec['date'], '2024-02-13')
+        self.assertEqual(rec['sha'], git(r, 'rev-parse', 'HEAD'))  # the sha stays the tagged commit
+        self.assertEqual(rec['all']['rust'], 3)
+
+    def test_zero_timestamp_without_ancestor_fails(self):
+        d = self.mkdtemp()
+        git(d, 'clone', '-q', '--depth', '1', 'file://' + self.repo(), 'c')
+        clone = os.path.join(d, 'c')
+        with self.assertRaisesRegex(history.HistoryError, 'zero timestamp'):
+            history.count_release(clone, 'HEAD')
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as cm:
+            history.main(['head', clone])
+        self.assertEqual(cm.exception.code, 1)
+        self.assertIn('error: commit', err.getvalue())
+        self.assertNotIn('Traceback', err.getvalue())
+
+
+class ErrorMessageTest(GitTestCase):
+    def test_head_on_empty_repo(self):
+        r = os.path.join(self.mkdtemp(), 'empty')
+        os.makedirs(r)
+        git(r, 'init', '-q')
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as cm:
+            history.main(['head', r])
+        self.assertEqual(cm.exception.code, 1)
+        self.assertIn('error: HEAD is not a commit', err.getvalue())
+
+    def test_append_starts_at_the_files_first_release(self):
+        d = self.mkdtemp()
+        git(d, 'clone', '-q', '--depth', '1', self.url(), 'c')
+        meta, recs = history.read_history(self.full_history)
+        path = os.path.join(d, 'from47.json')
+        with open(path, 'w') as f:
+            f.write(history.format_history(meta, recs[1:]))
+        with open(path, 'rb') as f:
+            before = f.read()
+        with quiet():
+            self.assertEqual(history.append(path, os.path.join(d, 'c')), 0)  # 46 is not added
+        with open(path, 'rb') as f:
+            self.assertEqual(f.read(), before)
+
+
 class BuildSiteTest(GitTestCase):
     def test_build_site(self):
         clone = os.path.join(self.mkdtemp(), 'c')

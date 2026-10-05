@@ -16,7 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js" integrity="sha384-su5kReKyYlIFrI62mbQRKXHzFobMa7BHp1cK6julLPbnYcCW9NIZKJiTODjLPeDh" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 /* Series colours are the validated categorical slots in fixed order (C++ blue, Rust orange, C aqua, JavaScript yellow,
-   HTML/CSS magenta, Python green, Java violet, Assembly red). Light and dark tokens; data-theme overrides the system. */
+   HTML/CSS magenta, Python green, Java/Kotlin violet, Assembly red). Light and dark tokens; data-theme overrides the system. */
 /* tokens:begin */ /* also copied into methodology.html by dev/render_docs.py */
 :root {
   --bg: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #6b6a64;
@@ -80,6 +80,7 @@ svg .strong { fill: var(--ink); font-weight: 500; }
 .tip .k { width: 14px; height: 0; border-top: 3px solid; flex: none; }
 .tip .n { color: var(--ink2); flex: 1; }
 .tip .v { font-family: var(--mono); font-weight: 500; color: var(--ink); white-space: nowrap; }
+.tip .sub { color: var(--muted); font-family: var(--mono); font-size: 11px; padding-left: 22px; line-height: 1.4; white-space: nowrap; }
 .tip .nt { color: var(--muted); margin-top: 4px; max-width: 240px; line-height: 1.4; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 8px; }
 .legend button, .legend span.it { font: inherit; font-size: 12px; display: inline-flex; gap: 6px; align-items: center; background: none; border: 0; padding: 2px 0; color: var(--ink2); }
@@ -97,11 +98,13 @@ svg .strong { fill: var(--ink); font-weight: 500; }
 .play { font: inherit; font-size: 13px; padding: 5px 12px; border: 1px solid var(--axis); background: none; color: var(--ink); border-radius: 6px; cursor: pointer; }
 .play:hover { background: var(--chip); }
 table.data { border-collapse: collapse; width: 100%; font-size: 12.5px; }
-table.data th, table.data td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--hair); font-variant-numeric: tabular-nums; }
+table.data th, table.data td { text-align: right; vertical-align: baseline; padding: 4px 8px; border-bottom: 1px solid var(--hair); font-variant-numeric: tabular-nums; }
 table.data th:first-child, table.data td:first-child { text-align: left; }
 table.data th { font-weight: 500; color: var(--ink2); position: sticky; top: 0; background: var(--bg); }
 table.data .mono { font-family: var(--mono); white-space: nowrap; }
 table.data td.gap { color: var(--muted); }
+table.data .sub { color: var(--muted); font-size: 11px; font-weight: 400; }
+table.data td:first-child .sub { padding-left: 18px; }   /* under the name, past the swatch (Pie table) */
 .cap { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
 .scroll { overflow: auto; max-height: 320px; border: 1px solid var(--hair); border-radius: 6px; }
 .dsum { margin-top: 12px; color: var(--ink2); }
@@ -154,7 +157,7 @@ table.data td.gap { color: var(--muted); }
 const LANGS = [
   { k: 'C++', name: 'C++', c: '--s1' }, { k: 'Rust', name: 'Rust', c: '--s2' }, { k: 'C', name: 'C', c: '--s3' },
   { k: 'JavaScript', name: 'JavaScript', c: '--s4' }, { k: 'HTML', name: 'HTML/CSS', c: '--s5' },
-  { k: 'Python', name: 'Python', c: '--s6' }, { k: 'Java', name: 'Java', c: '--s7' }, { k: 'Assembly', name: 'Assembly', c: '--s8' }
+  { k: 'Python', name: 'Python', c: '--s6' }, { k: 'Java', name: 'Java/Kotlin', c: '--s7' }, { k: 'Assembly', name: 'Assembly', c: '--s8' }
 ];
 const VIEWS = [
   { k: 'all', name: 'All files', long: 'All tracked files' },
@@ -166,7 +169,8 @@ const TABS = [
   { k: 'share', name: 'Language share', title: null },
   { k: 'pie', name: 'Pie', title: 'One release at a time' }
 ];
-const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'asm'];   // only these are summed
+const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'kt', 'asm'];   // only these are summed
+// Java and Kotlin are one series (Java/Kotlin, key 'Java'): the palette has eight slots; the data keeps them apart
 const st = { tab: 'comp', view: 'browser', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
 let D = null;          // display data, built from data.json
 let HAS = {};          // view key -> has any data
@@ -187,8 +191,9 @@ function convert(b, split) {
   if (!b || typeof b !== 'object') return null;
   for (const k of RAW_KEYS) if (typeof b[k] !== 'number' || !isFinite(b[k])) return null;   // an incomplete record is a gap
   const o = { 'C++': b.cpp + b.h * split.cpp, Rust: b.rust, C: b.c + b.h * split.c, JavaScript: b.js, HTML: b.html,
-              Python: b.py, Java: b.java, Assembly: b.asm };
+              Python: b.py, Java: b.java + b.kt, Assembly: b.asm };
   o.total = LANGS.reduce((a, L) => a + o[L.k], 0);
+  o.jv = b.java; o.kt = b.kt;   // the two parts of Java/Kotlin, for tooltips and tables; not in the total
   return o.total > 0 ? o : null;
 }
 function build(data) {
@@ -219,6 +224,14 @@ const isolated = (arr, j) => arr[j] != null && (j === 0 || arr[j - 1] == null) &
 const shortRun = (arr, j) => { if (arr[j] == null) return false; let a = j, b = j;
   while (a > 0 && arr[a - 1] != null) a--; while (b < arr.length - 1 && arr[b + 1] != null) b++; return b - a < 2; };
 const cellVal = (view, k, i, isS) => isS ? pct(share(view, k, i)) : exact(val(view, k, i));
+// 'Java 55,497, Kotlin 1,234' (the parts) for the Java/Kotlin series, null for any other language or a gap
+const jk = (view, k, i) => { const r = rec(view, i); return k === 'Java' && r ? 'Java ' + exact(r.jv) + ', Kotlin ' + exact(r.kt) : null; };
+// a table cell; in Lines mode the Java/Kotlin cell gets its split as a second, muted line
+function cell(view, k, i, isS) {
+  const td = el('td', 'mono', cellVal(view, k, i, isS)), s = isS ? null : jk(view, k, i);
+  if (s) td.appendChild(el('div', 'sub', s));
+  return td;
+}
 
 /* ---------- shared chart parts ---------- */
 function xDomain(f0) { return f0 < D.LAST ? [f0, D.LAST] : [f0 - 1, f0]; }
@@ -245,6 +258,7 @@ function tipShow(wrap, x, y, title, rows, note) {
     const k = el('span', 'k'); k.style.borderTopColor = r.color;
     row.appendChild(k); row.appendChild(el('span', 'n', r.name)); row.appendChild(el('span', 'v', r.value));
     t.appendChild(row);
+    if (r.sub) t.appendChild(el('div', 'sub', r.sub));
   }
   if (note) t.appendChild(el('div', 'nt', note));
   const w = wrap.clientWidth, tw = t.offsetWidth;
@@ -298,7 +312,8 @@ function helpFill(pop) {
   pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (mostly Android code) and minus files matched by the test rules. '
     + 'It keeps the desktop code for every platform, plus vendored third-party code, build tooling and docs. The test rules were written for today\'s tree, so values for older releases are less reliable.']));
   pop.appendChild(para(['Header files (', ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp)
-    + ' C++. Kotlin is not counted. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
+    + ' C++. Kotlin (', ['code', '.kt'], ') is counted, and shown together with Java as Java/Kotlin in the charts. '
+    + 'Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
 }
 function helpButton(host) {
   const btn = el('button', 'help', '?'); btn.type = 'button';
@@ -372,7 +387,7 @@ function drawStack(wrap) {
     cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
     if (!rec(view, i)) { tipShow(wrap, x(i), m.t + 40, ttl(i), [{ color: css('--axis'), name: 'No data in this view', value: '' }]); return; }
     const rs = LANGS.slice().reverse().map(L => ({ color: css(L.c), name: L.name,
-      value: pct(share(view, L.k, i)) + ' · ' + exact(val(view, L.k, i)) }));
+      value: pct(share(view, L.k, i)) + ' · ' + exact(val(view, L.k, i)), sub: jk(view, L.k, i) }));
     tipShow(wrap, x(i), m.t + 40, ttl(i) + ' · ' + exact(total(view, i)) + ' lines', rs);
   };
   const leave = () => { cross.setAttribute('visibility', 'hidden'); tipHide(wrap); };
@@ -482,7 +497,7 @@ function drawLangShare(wrap) {
       const v = V(s.k, i);
       if (v == null) { dots[j].setAttribute('visibility', 'hidden'); return { color: col, name: s.name, value: 'no data' }; }
       dots[j].setAttribute('cx', x(i)); dots[j].setAttribute('cy', y(v)); dots[j].setAttribute('visibility', 'visible');
-      return { color: col, name: s.name, value: pct(share(s.k, lang, i)) + ' · ' + exact(val(s.k, lang, i)) };
+      return { color: col, name: s.name, value: pct(share(s.k, lang, i)) + ' · ' + exact(val(s.k, lang, i)), sub: jk(s.k, lang, i) };
     });
     tipShow(wrap, x(i), m.t + 30, ttl(i) + ' · ' + LL.name, rows);
   };
@@ -510,7 +525,7 @@ function drawPie(wrap, i) {
   const arc = d3.arc().innerRadius(0).outerRadius(r);
   for (const a of arcs) {
     const p = svgEl(g, 'path', { d: arc(a), fill: css(a.data.L.c), stroke: css('--bg'), 'stroke-width': 2 });
-    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v) }]); });
+    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v), sub: jk(view, a.data.L.k, i) }]); });
     p.addEventListener('pointerleave', () => tipHide(left));
   }
   const right = el('div'); grid.appendChild(right);
@@ -521,6 +536,7 @@ function drawPie(wrap, i) {
     const tr = el('tr'), c0 = el('td'), sw = el('span');
     sw.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;background:var(' + L.c + ')';
     c0.appendChild(sw); c0.appendChild(document.createTextNode(L.name)); tr.appendChild(c0);
+    const sp = jk(view, L.k, i); if (sp) c0.appendChild(el('div', 'sub', sp));
     tr.appendChild(el('td', 'mono', pct(share(view, L.k, i)))); tr.appendChild(el('td', 'mono', exact(val(view, L.k, i))));
     let dd = '–';
     if (pi != null) { const d = (share(view, L.k, i) - share(view, L.k, pi)) * 100; const a = Math.abs(d).toFixed(1); dd = (+a === 0 ? '±' : d > 0 ? '+' : '−') + a + ' pp'; }
@@ -564,7 +580,7 @@ function viewTable(isS) {
     for (let i = D.LAST; i >= 0; i--) {
       const tr = el('tr'); tr.appendChild(el('td', 'mono', lab(i)));
       if (!rec(st.view, i)) { const td = el('td', 'mono gap', 'no data'); td.colSpan = LANGS.length + 1; td.style.textAlign = 'center'; tr.appendChild(td); }
-      else { LANGS.forEach(L => tr.appendChild(el('td', 'mono', cellVal(st.view, L.k, i, isS)))); tr.appendChild(el('td', 'mono', exact(total(st.view, i)))); }
+      else { LANGS.forEach(L => tr.appendChild(cell(st.view, L.k, i, isS))); tr.appendChild(el('td', 'mono', exact(total(st.view, i)))); }
       t.appendChild(tr);
     }
   });
@@ -575,7 +591,7 @@ function langTable() {
     const hd = el('tr'); ['Release'].concat(SERIES.map(s => s.name)).forEach(h => hd.appendChild(el('th', null, h))); t.appendChild(hd);
     for (let i = D.LAST; i >= 0; i--) {
       const tr = el('tr'); tr.appendChild(el('td', 'mono', lab(i)));
-      SERIES.forEach(s => { const ok = rec(s.k, i) != null; tr.appendChild(el('td', 'mono' + (ok ? '' : ' gap'), ok ? cellVal(s.k, st.lang, i, isS) : 'no data')); });
+      SERIES.forEach(s => { const ok = rec(s.k, i) != null; tr.appendChild(ok ? cell(s.k, st.lang, i, isS) : el('td', 'mono gap', 'no data')); });
       t.appendChild(tr);
     }
   });

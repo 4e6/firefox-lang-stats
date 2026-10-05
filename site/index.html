@@ -78,6 +78,7 @@ svg .strong { fill: var(--ink); font-weight: 500; }
 .tip .k { width: 14px; height: 0; border-top: 3px solid; flex: none; }
 .tip .n { color: var(--ink2); flex: 1; }
 .tip .v { font-family: var(--mono); font-weight: 500; color: var(--ink); white-space: nowrap; }
+.tip .nt { color: var(--muted); margin-top: 4px; max-width: 240px; line-height: 1.4; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 8px; }
 .legend button, .legend span.it { font: inherit; font-size: 12px; display: inline-flex; gap: 6px; align-items: center; background: none; border: 0; padding: 2px 0; color: var(--ink2); }
 .legend button { cursor: pointer; }
@@ -141,9 +142,11 @@ table.data td.gap { color: var(--muted); }
       <li>Desktop only: <code>mobile/</code> is excluded from every series.</li>
       <li>Non-test files: the test-detection rules were written for today's tree. Older trees used other directory names,
         so non-test values for older releases are less reliable.</li>
-      <li>Browser artifact: the source files built into the Linux x86-64 desktop browser, plus the JavaScript, HTML and CSS
-        packed into it. Assembly is not covered there and is shown as "not counted". Releases without this data are left
-        as gaps, never zeros.</li>
+      <li>Browser artifact: the source files compiled into the Linux x86-64 desktop browser, taken from the debug symbols
+        of Mozilla's own build, plus the JavaScript, HTML and CSS packed into its <code>omni.ja</code> archives (counted
+        as shipped: bundled and preprocessed). Python and Java do not ship; assembly is not covered and is shown as
+        "not counted". <span id="art-cover">Releases without this data are left as gaps, never zeros.</span>
+        <span id="art-head" hidden></span></li>
       <li id="tag-note" hidden></li>
       <li>The numbers behind the page: <a href="data.json">data.json</a>.</li>
     </ul>
@@ -169,7 +172,7 @@ const TABS = [
   { k: 'share', name: 'Language share', title: null },
   { k: 'pie', name: 'Pie + scrubber', title: 'One release at a time' }
 ];
-const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'asm'];
+const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'asm'];   // only these are summed; sha and source are metadata
 const st = { tab: 'comp', view: 'nontest', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
 let D = null;          // display data, built from data.json
 let HAS = {};          // view key -> has any data
@@ -195,17 +198,18 @@ function convert(b, split) {
   o.total = LANGS.reduce((a, L) => a + o[L.k], 0);
   return o.total > 0 ? o : null;
 }
+const artSha = a => a && typeof a === 'object' && typeof a.sha === 'string' ? a.sha : null;
 function build(data) {
   if (!data || !Array.isArray(data.releases)) throw new Error('data.json has no "releases" list');
   const hs = data.header_split || {};
   const split = { c: typeof hs.c === 'number' ? hs.c : 0.185, cpp: typeof hs.cpp === 'number' ? hs.cpp : 0.815 };
   const rel = data.releases.filter(r => r && Number.isFinite(+r.v)).slice().sort((a, b) => a.v - b.v);
   const pts = rel.map(r => ({ v: +r.v, label: String(r.v), title: 'Firefox ' + r.v, tag: r.tag, date: r.date, head: false,
-    views: { all: convert(r.all, split), nontest: convert(r.nontest, split), artifact: convert(r.artifact, split) } }));
+    asha: artSha(r.artifact), views: { all: convert(r.all, split), nontest: convert(r.nontest, split), artifact: convert(r.artifact, split) } }));
   if (data.head && typeof data.head === 'object') {
     const h = data.head;
     pts.push({ v: null, label: 'head', title: 'Head' + (h.date ? ' (' + h.date + ')' : ''), date: h.date, sha: h.sha, head: true,
-      views: { all: convert(h.all, split), nontest: convert(h.nontest, split), artifact: convert(h.artifact, split) } });
+      asha: artSha(h.artifact), views: { all: convert(h.all, split), nontest: convert(h.nontest, split), artifact: convert(h.artifact, split) } });
   }
   if (!pts.length) throw new Error('data.json has no releases');
   return { pts, N: pts.length, LAST: pts.length - 1, split, data };
@@ -219,6 +223,15 @@ const lastIdx = view => { for (let i = D.LAST; i >= 0; i--) if (D.pts[i].views[v
 const lab = i => D.pts[i].label;
 const ttl = i => D.pts[i].title;
 const isolated = (arr, j) => arr[j] != null && (j === 0 || arr[j - 1] == null) && (j === arr.length - 1 || arr[j + 1] == null);
+const sha7 = s => (s || '').slice(0, 7);
+// The head's artifact is counted at the build's own commit, usually a little older than the head commit.
+const artNote = i => { const p = D.pts[i]; if (!p.head || !p.asha || !rec('artifact', i)) return null;
+  return 'Browser artifact counted at the latest finished mozilla-central build, commit ' + sha7(p.asha)
+    + (p.asha === p.sha ? ' (the same commit as the head).' : ' (the head is ' + sha7(p.sha) + ').'); };
+const artNoteFor = (view, i) => view === 'artifact' ? artNote(i) : null;
+// a point drawn as a marker: alone, or in a run of two (a two-point line is too short to see on a long axis)
+const shortRun = (arr, j) => { if (arr[j] == null) return false; let a = j, b = j;
+  while (a > 0 && arr[a - 1] != null) a--; while (b < arr.length - 1 && arr[b + 1] != null) b++; return b - a < 2; };
 const cellVal = (view, k, i, isS) => notCounted(view, k) && rec(view, i) ? 'not counted' : isS ? pct(share(view, k, i)) : exact(val(view, k, i));
 
 /* ---------- shared chart parts ---------- */
@@ -236,7 +249,7 @@ function xAxis(svg, x, y0, W, right) {
     t.textContent = lab(i);
   }
 }
-function tipShow(wrap, x, y, title, rows) {
+function tipShow(wrap, x, y, title, rows, note) {
   let t = wrap.querySelector('.tip');
   if (!t) { t = el('div', 'tip'); wrap.appendChild(t); }
   t.textContent = '';
@@ -247,6 +260,7 @@ function tipShow(wrap, x, y, title, rows) {
     row.appendChild(k); row.appendChild(el('span', 'n', r.name)); row.appendChild(el('span', 'v', r.value));
     t.appendChild(row);
   }
+  if (note) t.appendChild(el('div', 'nt', note));
   const w = wrap.clientWidth, tw = t.offsetWidth;
   t.style.left = Math.max(0, Math.min(w - tw, x + 14 > w - tw ? x - tw - 14 : x + 14)) + 'px';
   t.style.top = Math.max(0, y - 20) + 'px';
@@ -334,7 +348,7 @@ function drawStack(wrap) {
     if (!rec(view, i)) { tipShow(wrap, x(i), m.t + 40, ttl(i), [{ color: css('--axis'), name: 'No data in this view', value: '' }]); return; }
     const rs = LANGS.slice().reverse().map(L => ({ color: css(L.c), name: L.name,
       value: notCounted(view, L.k) ? 'not counted' : pct(share(view, L.k, i)) + ' · ' + exact(val(view, L.k, i)) }));
-    tipShow(wrap, x(i), m.t + 40, ttl(i) + ' · ' + exact(total(view, i)) + ' lines', rs);
+    tipShow(wrap, x(i), m.t + 40, ttl(i) + ' · ' + exact(total(view, i)) + ' lines', rs, artNoteFor(view, i));
   };
   const leave = () => { cross.setAttribute('visibility', 'hidden'); tipHide(wrap); };
   overlay.addEventListener('pointermove', e => hover(idxFrom(svg, x, W, e, f0)));
@@ -366,7 +380,7 @@ function drawMultiples(wrap) {
     svgEl(svg, 'path', { d: d3.area().defined(def).x(d => x(d[0])).y0(y(0)).y1(d => y(d[1]))(pts) || '', fill: css(L.c), opacity: .18 });
     svgEl(svg, 'path', { d: d3.line().defined(def).x(d => x(d[0])).y(d => y(d[1]))(pts) || '', fill: 'none', stroke: css(L.c), 'stroke-width': L.k === 'Rust' ? 2.5 : 1.75, 'stroke-linejoin': 'round' });
     const ys = pts.map(p => p[1]);
-    pts.forEach((p, j) => { if (isolated(ys, j)) svgEl(svg, 'circle', { cx: x(p[0]), cy: y(p[1]), r: 2.5, fill: css(L.c) }); });
+    pts.forEach((p, j) => { if (shortRun(ys, j)) svgEl(svg, 'circle', { cx: x(p[0]), cy: y(p[1]), r: 2.5, fill: css(L.c) }); });
     const t0 = svgEl(svg, 'text', { x: x(Math.max(0, x.domain()[0])), y: H - 3 }); t0.textContent = lab(Math.max(0, Math.ceil(x.domain()[0])));
     const t1 = svgEl(svg, 'text', { x: W - m.r, y: H - 3, 'text-anchor': 'end' }); t1.textContent = lab(D.LAST);
     const cross = svgEl(svg, 'line', { y1: m.t, y2: H - m.b, stroke: css('--ink2'), visibility: 'hidden' });
@@ -384,7 +398,8 @@ function drawMultiples(wrap) {
     else { p.dot.setAttribute('cx', p.x(i)); p.dot.setAttribute('cy', p.y(v)); p.dot.setAttribute('visibility', 'visible'); }
     p.vv.textContent = lab(i) + ' · ' + head(p.L.k, i);
   });
-  wrap.appendChild(el('p', 'cap', 'Each panel has its own vertical scale starting at zero; compare sizes by the numbers, not the heights. Values at ' + (li >= 0 ? ttl(li) : '–') + '.'));
+  wrap.appendChild(el('p', 'cap', 'Each panel has its own vertical scale starting at zero; compare sizes by the numbers, not the heights. Values at ' + (li >= 0 ? ttl(li) : '–') + '.'
+    + (li >= 0 && artNoteFor(view, li) ? ' ' + artNoteFor(view, li) : '')));
 }
 
 /* ---------- 3. Language share: one language, three series ---------- */
@@ -426,7 +441,7 @@ function drawLangShare(wrap) {
     const pts = D.pts.map((_, i) => [i, V(s.k, i)]), on = s.k === 'nontest', ys = pts.map(p => p[1]);
     const p = svgEl(svg, 'path', { d: ln(pts) || '', fill: 'none', stroke: col, 'stroke-width': on ? s.w + 1 : s.w, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: on ? 1 : .6 });
     if (s.dash) p.setAttribute('stroke-dasharray', s.dash);
-    pts.forEach((q, j) => { if (isolated(ys, j)) svgEl(svg, 'circle', { cx: x(q[0]), cy: y(q[1]), r: 3.5, fill: 'none', stroke: col, 'stroke-width': 2, opacity: on ? 1 : .8 }); });
+    pts.forEach((q, j) => { if (shortRun(ys, j)) svgEl(svg, 'circle', { cx: x(q[0]), cy: y(q[1]), r: 3.5, fill: 'none', stroke: col, 'stroke-width': 2, opacity: on ? 1 : .8 }); });
     let li = D.LAST; while (li >= 0 && ys[li] == null) li--;
     if (li >= 0) labels.push({ y: y(ys[li]), name: s.short, v: ys[li], on });
   }
@@ -446,7 +461,7 @@ function drawLangShare(wrap) {
       dots[j].setAttribute('cx', x(i)); dots[j].setAttribute('cy', y(v)); dots[j].setAttribute('visibility', 'visible');
       return { color: col, dash: !!s.dash, name: s.name, value: pct(share(s.k, lang, i)) + ' · ' + exact(val(s.k, lang, i)) };
     });
-    tipShow(wrap, x(i), m.t + 30, ttl(i) + ' · ' + LL.name, rows);
+    tipShow(wrap, x(i), m.t + 30, ttl(i) + ' · ' + LL.name, rows, artNote(i));
   };
   const leave = () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tipHide(wrap); };
   const overlay = svgEl(svg, 'rect', { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent', style: 'cursor:crosshair' });
@@ -472,7 +487,7 @@ function drawPie(wrap, i) {
   const arc = d3.arc().innerRadius(0).outerRadius(r);
   for (const a of arcs) {
     const p = svgEl(g, 'path', { d: arc(a), fill: css(a.data.L.c), stroke: css('--bg'), 'stroke-width': 2 });
-    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v) }]); });
+    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v) }], artNoteFor(view, i)); });
     p.addEventListener('pointerleave', () => tipHide(left));
   }
   const right = el('div'); grid.appendChild(right);
@@ -492,8 +507,9 @@ function drawPie(wrap, i) {
   const tr = el('tr'); tr.appendChild(el('td', null, 'Total')); tr.appendChild(el('td', 'mono', '100%')); tr.appendChild(el('td', 'mono', exact(total(view, i)))); tr.appendChild(el('td'));
   t.appendChild(tr);
   right.appendChild(t);
-  right.appendChild(el('p', 'cap', pi != null ? 'Change: percentage points against ' + ttl(pi) + '.'
-    : i > 0 ? 'Change: no data for ' + ttl(i - 1) + ' in this view.' : 'Change: this is the first release.'));
+  right.appendChild(el('p', 'cap', (pi != null ? 'Change: percentage points against ' + ttl(pi) + '.'
+    : i > 0 ? 'Change: no data for ' + ttl(i - 1) + ' in this view.' : 'Change: this is the first release.')
+    + (artNoteFor(view, i) ? ' ' + artNoteFor(view, i) : '')));
 }
 function stopPlay() { if (st.playing) { clearInterval(st.playing); st.playing = null; } }
 function pieScrubber(host, redraw) {
@@ -514,12 +530,14 @@ function pieScrubber(host, redraw) {
 }
 
 /* ---------- data tables: every value reachable without hovering ---------- */
-function details(summary, buildTable) {
+function details(summary, buildTable, note) {
   const d = el('details', 'dsum'); d.open = st.tableOpen; d.addEventListener('toggle', () => { st.tableOpen = d.open; });
   d.appendChild(el('summary', null, summary));
   const sc = el('div', 'scroll'), t = el('table', 'data'); sc.appendChild(t); buildTable(t); d.appendChild(sc);
+  if (note) d.appendChild(el('p', 'cap', note));
   return d;
 }
+const headArtNote = () => { const i = D.pts.findIndex(p => p.head); return i >= 0 ? artNote(i) : null; };
 function viewTable(isS) {
   const v = viewOf(st.view);
   return details('Show the data as a table (' + v.long + ', ' + (isS ? 'share' : 'lines') + ')', t => {
@@ -530,7 +548,7 @@ function viewTable(isS) {
       else { LANGS.forEach(L => tr.appendChild(el('td', 'mono', cellVal(st.view, L.k, i, isS)))); tr.appendChild(el('td', 'mono', exact(total(st.view, i)))); }
       t.appendChild(tr);
     }
-  });
+  }, st.view === 'artifact' ? headArtNote() : null);
 }
 function langTable() {
   const LL = langOf(st.lang), isS = st.ascale === 'share';
@@ -541,7 +559,7 @@ function langTable() {
       SERIES.forEach(s => { const ok = rec(s.k, i) != null; tr.appendChild(el('td', 'mono' + (ok ? '' : ' gap'), ok ? cellVal(s.k, st.lang, i, isS) : 'no data')); });
       t.appendChild(tr);
     }
-  });
+  }, headArtNote());
 }
 
 /* ---------- page ---------- */
@@ -605,13 +623,22 @@ function header() {
     const li = document.getElementById('tag-note'); li.hidden = false;
     li.textContent = odd.map(p => 'Release ' + p.v + ' has no release tag; it is counted at ' + p.tag + '.').join(' ');
   }
+  const withArt = D.pts.filter(p => p.views.artifact);
+  if (withArt.length) {
+    const rels = withArt.filter(p => !p.head).map(p => p.v), hasHead = withArt.some(p => p.head);
+    document.getElementById('art-cover').textContent = 'It is available for ' + (rels.length ? (rels.length === 1 ? 'release ' : 'releases ') + rels.join(', ') : '')
+      + (rels.length && hasHead ? ' and ' : '') + (hasHead ? 'the head' : '') + '; other releases are left as gaps, never zeros. A release\'s artifact is counted at its release tag from Mozilla\'s release build.';
+  }
+  const hn = headArtNote();
+  if (hn) { const e = document.getElementById('art-head'); e.hidden = false; e.textContent = hn.replace('Browser artifact counted', 'The head\'s artifact is counted'); }
   const i = lastIdx('nontest'), j = lastIdx('all'), k = lastIdx('artifact');
   if (i >= 0) {
     const where = D.pts[i].head ? 'At the current head' : 'In ' + ttl(i);
-    let s = where + ', Rust is <b>' + pct(share('nontest', 'Rust', i)) + '</b> of non-test lines';
-    if (j === i) s += ' and <b>' + pct(share('all', 'Rust', j)) + '</b> of all tracked lines';
-    if (k === i) s += ', and <b>' + pct(share('artifact', 'Rust', k)) + '</b> of the browser artifact';
-    document.getElementById('headline').innerHTML = s + '.';
+    const parts = ['<b>' + pct(share('nontest', 'Rust', i)) + '</b> of non-test lines'];
+    if (j === i) parts.push('<b>' + pct(share('all', 'Rust', j)) + '</b> of all tracked lines');
+    if (k === i) parts.push('<b>' + pct(share('artifact', 'Rust', k)) + '</b> of the browser artifact');
+    const list = parts.length < 3 ? parts.join(' and ') : parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
+    document.getElementById('headline').innerHTML = where + ', Rust is ' + list + '.';
   }
 }
 

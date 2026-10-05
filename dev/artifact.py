@@ -33,9 +33,19 @@ Output: one JSON object, {"rust",...,"asm","sha","source"}, where source is
 {"kind":"symbols","index","task","libxul_debug_id","modules","paths"} (`kind` names where the file list came from;
 consumers should read source.kind and sum only the nine language keys). Statistics go to stderr, or to --stats FILE.
 
+For a release build `source` comes from the caller (dev/history.py set-artifact):
+{"kind":"candidates","symbols","package","libxul_debug_id","modules","paths"}; the last three are always measured.
+
 Fail soft: every network, format or git failure raises ArtifactUnavailable (exit status 3 on the command line), so a
-weekly job can store `artifact: null` and carry on. Every request has a timeout and bounded retries, and the whole run
-has a deadline (--deadline, default 20 minutes). Exit status 1 means a bug, 2 a usage error.
+weekly job can store `artifact: null` and carry on. That covers failed requests (HTTP errors, timeouts, broken
+connections, truncated or malformed HTTP answers), malformed remote data (JSON, archives, ELF headers, FILE records:
+only the code that parses them maps ValueError, KeyError and the like to ArtifactUnavailable) and git failures. Any
+other exception is a bug: the command line exits 1 with a traceback, and try_head() logs the traceback and returns
+None. Every request has a timeout and bounded retries, and the whole run has a deadline (--deadline, default 20
+minutes). Exit status 2 is a usage error.
+
+omni.ja of a release build is an "optimized" jar (the central directory first, after a 4-byte read-ahead length),
+which Python's zipfile rejects; it is read with the same small zip reader as the symbols zip.
 
 Python 3.9+, standard library only. Tests: python3 -m unittest discover -s dev
 """
@@ -43,8 +53,8 @@ import argparse
 import bz2
 import collections
 import contextlib
+import http.client
 import importlib.util
-import io
 import json
 import lzma
 import os
@@ -57,9 +67,9 @@ import sys
 import tarfile
 import tempfile
 import time
+import traceback
 import urllib.error
 import urllib.request
-import zipfile
 import zlib
 from importlib.machinery import SourceFileLoader
 
@@ -114,6 +124,22 @@ def log(*a):
     print(time.strftime('%H:%M:%S'), *a, file=sys.stderr, flush=True)
 
 
+# what malformed remote data raises inside the code that parses it (and only there; elsewhere these are bugs)
+MALFORMED = (ValueError, KeyError, IndexError, TypeError, AttributeError, struct.error, zlib.error, OverflowError)
+
+
+@contextlib.contextmanager
+def parsing(what):
+    """Wrap code that parses data from the network: a malformed answer, archive, ELF header or FILE record becomes
+    ArtifactUnavailable instead of a crash. Never wrapped around anything else, so a bug still shows as one."""
+    try:
+        yield
+    except ArtifactUnavailable:
+        raise
+    except MALFORMED as e:
+        raise ArtifactUnavailable('malformed %s (%s: %s)' % (what, type(e).__name__, e)) from None
+
+
 # ---------------------------------------------------------------------------------------------------------------
 # network: one context per run, with a deadline, byte counters and a replaceable opener (tests stub it)
 
@@ -148,7 +174,7 @@ class Context:
             except urllib.error.HTTPError as e:
                 if 400 <= e.code < 500 or i == self.tries - 1:
                     raise ArtifactUnavailable('%s: HTTP %d' % (url, e.code)) from None
-            except (urllib.error.URLError, socket.timeout, OSError) as e:
+            except (urllib.error.URLError, http.client.HTTPException, socket.timeout, OSError) as e:
                 if i == self.tries - 1:
                     raise ArtifactUnavailable('%s: %s' % (url, e)) from None
             self.sleep(2 ** (i + 1))
@@ -235,18 +261,21 @@ def resolve_index(ctx, ns=INDEX):
 
     `revisions` are the 40-hex revisions in the task's routes, in order (an hg one and a git one for
     mozilla-central); the git sha is confirmed later from the FILE records."""
-    task = ctx.json(INDEX_URL.format(ns=ns)).get('taskId')
-    if not task:
+    with parsing('index answer'):
+        task = ctx.json(INDEX_URL.format(ns=ns)).get('taskId')
+    if not task or not isinstance(task, str):
         raise ArtifactUnavailable('index %s has no taskId' % ns)
-    status = ctx.json(STATUS_URL.format(task=task)).get('status', {})
-    if status.get('state') != 'completed':
-        raise ArtifactUnavailable('task %s is %s, not completed' % (task, status.get('state')))
-    routes = ctx.json(TASK_URL.format(task=task)).get('routes', [])
-    revisions = []
-    for r in routes:
-        for h in HEX40.findall(r):
-            if h not in revisions:
-                revisions.append(h)
+    with parsing('task status'):
+        state = ctx.json(STATUS_URL.format(task=task)).get('status', {}).get('state')
+    if state != 'completed':
+        raise ArtifactUnavailable('task %s is %s, not completed' % (task, state))
+    with parsing('task definition'):
+        routes = ctx.json(TASK_URL.format(task=task)).get('routes', [])
+        revisions = []
+        for r in routes:
+            for h in HEX40.findall(r):
+                if h not in revisions:
+                    revisions.append(h)
     if not revisions:
         raise ArtifactUnavailable('task %s has no revision in its routes' % task)
     return {'task': task, 'revisions': revisions,
@@ -298,17 +327,33 @@ def lang_of(path):
     return history.EXT2LANG.get(m.group(1)) if m else None
 
 
-def count_omni(data):
-    """({"js": lines, "html": lines}, files counted) for the files inside one omni.ja (a zip), by history.py's rules."""
+class BytesFile:
+    """An in-memory file with RemoteFile's interface (size, url, get), so the zip reader below serves both."""
+
+    def __init__(self, data, url):
+        self.data, self.size, self.url = data, len(data), url
+
+    def get(self, start, end):
+        if start < 0 or end >= self.size or end < start:
+            raise ArtifactUnavailable('%s: bad range %d-%d of %d' % (self.url, start, end, self.size))
+        return self.data[start:end + 1]
+
+
+def count_omni(data, name='omni.ja'):
+    """({"js": lines, "html": lines}, files counted) for the files inside one omni.ja, by history.py's rules.
+
+    Reads plain zips and Mozilla's optimized jars (central directory at the start, absolute offsets), which
+    zipfile.ZipFile rejects with "Bad magic number for central directory"."""
+    rf = BytesFile(data, name)
     counts = dict.fromkeys(OMNI_KEYS, 0)
     nfiles = 0
-    with zipfile.ZipFile(io.BytesIO(data)) as z:
-        for info in z.infolist():
-            if info.is_dir():
+    with parsing(name):
+        for entry, ent in zip_directory(rf).items():
+            if entry.endswith('/'):
                 continue
-            lang = lang_of(info.filename)
+            lang = lang_of(entry)
             if lang in counts:
-                counts[lang] += z.read(info).count(b'\n')
+                counts[lang] += zip_entry(rf, ent).count(b'\n')
                 nfiles += 1
     return counts, nfiles
 
@@ -318,9 +363,11 @@ def scan_package(ctx, url):
     r = ctx.open(url, kind='package')
     try:
         size = r.headers.get('Content-Length')
-        if size is not None and int(size) > MAX_PACKAGE:
+        with parsing('Content-Length'):
+            size = int(size) if size is not None else None
+        if size is not None and size > MAX_PACKAGE:
             raise ArtifactUnavailable('%s: %s bytes, more than the %d byte limit' % (url, size, MAX_PACKAGE))
-        ctx.stats['package_size'] = int(size) if size is not None else None
+        ctx.stats['package_size'] = size
         log('package', r.geturl(), size, 'bytes')
         body = CountingReader(ctx, r, 'package')
         dec = bz2.BZ2File(body) if url.endswith('.bz2') else lzma.LZMAFile(body)
@@ -331,13 +378,14 @@ def scan_package(ctx, url):
                     continue
                 f = tf.extractfile(m)
                 if os.path.basename(m.name) == 'omni.ja':
-                    counts, nfiles = count_omni(f.read())
+                    counts, nfiles = count_omni(f.read(), m.name)
                     omni[m.name] = dict(counts, files=nfiles)
                     continue
                 head = f.read(64 << 10)
                 if head[:4] != b'\x7fELF':
                     continue
-                bid = build_id(head, f)
+                with parsing('ELF header of %s' % m.name):
+                    bid = build_id(head, f)
                 elves.append((m.name, m.size, bid.hex().upper() if bid else None))
     finally:
         r.close()
@@ -348,8 +396,10 @@ def scan_package(ctx, url):
 # symbols zip: central directory and the header of one .sym
 
 
+@parsing('zip directory')
 def zip_directory(rf):
-    """{entry name: (method, compressed size, uncompressed size, local header offset)} of a remote zip."""
+    """{entry name: (method, compressed size, uncompressed size, local header offset)} of a zip read through `rf`
+    (RemoteFile or BytesFile). Offsets are absolute, which also fits Mozilla's optimized jars."""
     tail_start = max(0, rf.size - 65558)
     tail = rf.get(tail_start, rf.size - 1)
     i = tail.rfind(b'PK\x05\x06')
@@ -387,8 +437,8 @@ def zip_directory(rf):
     return ents
 
 
-def zip_sym_header(rf, ent, chunk=CHUNK):
-    """MODULE, INFO and FILE lines at the head of one .sym entry; reads only until the FILE records end."""
+def zip_data_start(rf, ent):
+    """Offset of the (compressed) data of a zip entry, after its local header."""
     meth, csz, usz, off = ent
     if meth not in (0, 8):
         raise ArtifactUnavailable('%s: unsupported compression method %d' % (rf.url, meth))
@@ -396,7 +446,26 @@ def zip_sym_header(rf, ent, chunk=CHUNK):
     if lh[:4] != b'PK\x03\x04':
         raise ArtifactUnavailable('%s: no local header at %d' % (rf.url, off))
     nl, el = struct.unpack('<HH', lh[26:30])
-    pos = off + 30 + nl + el
+    return off + 30 + nl + el
+
+
+@parsing('zip entry')
+def zip_entry(rf, ent):
+    """The uncompressed bytes of one zip entry (stored or deflated), checked against its size."""
+    meth, csz, usz, off = ent
+    pos = zip_data_start(rf, ent)
+    raw = rf.get(pos, pos + csz - 1) if csz else b''
+    data = zlib.decompress(raw, -15) if meth == 8 else raw
+    if len(data) != usz:
+        raise ArtifactUnavailable('%s: entry at %d is %d bytes, expected %d' % (rf.url, off, len(data), usz))
+    return data
+
+
+@parsing('.sym header')
+def zip_sym_header(rf, ent, chunk=CHUNK):
+    """MODULE, INFO and FILE lines at the head of one .sym entry; reads only until the FILE records end."""
+    meth, csz, usz, off = ent
+    pos = zip_data_start(rf, ent)
     end = pos + csz
     d = zlib.decompressobj(-15) if meth == 8 else None
     buf, lines = b'', []
@@ -641,15 +710,16 @@ def count_paths(ctx, repo, sha, paths, excludes=history.DEFAULT_EXCLUDES, remote
 
 @contextlib.contextmanager
 def stage(ctx, name):
-    """Time a step and turn every expected failure inside it into ArtifactUnavailable."""
+    """Time a step and turn every expected I/O, archive or git failure inside it into ArtifactUnavailable."""
     t = time.time()
     try:
         yield
     except ArtifactUnavailable as e:
         raise ArtifactUnavailable('%s: %s' % (name, e)) from None
-    except (urllib.error.URLError, socket.timeout, OSError, EOFError, tarfile.TarError, lzma.LZMAError,
-            zipfile.BadZipFile, zlib.error, struct.error, subprocess.SubprocessError, history.HistoryError,
-            ValueError, KeyError, IndexError, UnicodeError) as e:
+    except (urllib.error.URLError, http.client.HTTPException, socket.timeout, OSError, EOFError, tarfile.TarError,
+            lzma.LZMAError, zlib.error, struct.error, subprocess.SubprocessError, history.HistoryError) as e:
+        # failed or truncated transfers (IncompleteRead, BadStatusLine, LineTooLong are HTTPException), broken
+        # archives and git failures; ValueError, KeyError and the like are bugs unless parsing() mapped them
         raise ArtifactUnavailable('%s: %s: %s' % (name, type(e).__name__, e)) from None
     finally:
         ctx.stats.setdefault('seconds', {})[name] = round(time.time() - t, 1)
@@ -678,7 +748,8 @@ def artifact_from_build(symbols_url, package_url, repo, sha=None, revisions=None
             n = sum(1 for x in head if x.startswith('FILE '))
             read.append({'module': mod, 'debug_id': did, 'file_records': n})
             lines.extend(head)
-        paths, revs, dropped = repo_paths(lines)
+        with parsing('FILE records'):
+            paths, revs, dropped = repo_paths(lines)
         commit = build_sha(revs, revisions, sha)
         xul = [r['debug_id'] for r in read if r['module'] == 'libxul.so'][0]
         ctx.stats.update(modules_read=read, modules_skipped=skipped, paths=len(paths), dropped=dict(dropped),
@@ -700,8 +771,10 @@ def artifact_from_build(symbols_url, package_url, repo, sha=None, revisions=None
         for k in OMNI_KEYS:
             rec[k] += jar[k]
     rec['sha'] = commit
-    rec['source'] = dict({'kind': 'symbols'}, **(source or {}), libxul_debug_id=xul, modules=len(read),
-                         paths=len(paths))
+    src = {'kind': 'symbols'}
+    src.update(source or {})       # the caller's keys (kind, index, task, symbols, package, ...) win over the default
+    src.update(libxul_debug_id=xul, modules=len(read), paths=len(paths))   # measured, always from this run
+    rec['source'] = src
     ctx.stats['seconds']['total'] = round(time.time() - ctx.t0, 1)
     ctx.stats['bytes'] = dict(ctx.bytes)
     return rec
@@ -724,8 +797,8 @@ def try_head(repo, **kw):
         return head_artifact(repo, **kw)
     except ArtifactUnavailable as e:
         log('artifact unavailable:', e)
-    except Exception as e:  # never fail the weekly job because of the artifact
-        log('artifact failed: %s: %s' % (type(e).__name__, e))
+    except Exception as e:  # a bug, but never fail the weekly job because of the artifact
+        log('artifact failed (a bug): %s: %s\n%s' % (type(e).__name__, e, traceback.format_exc().rstrip()))
     return None
 
 
@@ -766,8 +839,7 @@ def main(argv=None, ctx=None):
     finally:
         if a.stats:
             ctx.stats.setdefault('bytes', dict(ctx.bytes))
-            with open(a.stats, 'w') as f:
-                json.dump(ctx.stats, f, indent=1, default=list)
+            history.write_atomic(a.stats, json.dumps(ctx.stats, indent=1, default=list) + '\n')
     text = history.dumps(rec) + '\n'
     if a.out:
         history.write_atomic(a.out, text)

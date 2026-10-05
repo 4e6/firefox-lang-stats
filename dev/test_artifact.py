@@ -3,6 +3,7 @@
 Run: python3 -m unittest discover -s dev
 """
 import contextlib
+import http.server
 import io
 import json
 import os
@@ -12,9 +13,12 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
 import unittest
 import urllib.error
+import urllib.request
 import zipfile
+import zlib
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -60,6 +64,21 @@ def make_zip(files, method=zipfile.ZIP_DEFLATED):
         for name, data in files:
             z.writestr(name, data)
     return buf.getvalue()
+
+
+def make_optimized_jar(files):
+    """A Mozilla "optimized" jar (as in release builds): a 4-byte read-ahead length, the central directory, the stored
+    entries, then the end record whose directory offset (4) is absolute. zipfile.ZipFile rejects it."""
+    files = [(n.encode(), d.encode() if isinstance(d, str) else d) for n, d in files]
+    cdsize = sum(46 + len(n) for n, _ in files)
+    off, cd, local = 4 + cdsize, b'', b''
+    for n, d in files:
+        crc = zlib.crc32(d)
+        cd += struct.pack('<IHHHHHHIIIHHHHHII', 0x02014b50, 20, 10, 0, 0, 0, 0, crc, len(d), len(d), len(n), 0, 0, 0,
+                          0, 0, off + len(local)) + n
+        local += struct.pack('<IHHHHHIIIHH', 0x04034b50, 10, 0, 0, 0, 0, crc, len(d), len(d), len(n), 0) + n + d
+    end = struct.pack('<IHHHHIIH', 0x06054b50, 0, 0, len(files), len(files), cdsize, 4, 0)
+    return struct.pack('<I', 4 + cdsize + len(local)) + cd + local + end
 
 
 def make_tar_xz(files):
@@ -191,6 +210,24 @@ class ParseTest(unittest.TestCase):
                         ('chrome/d.xhtml', 'h\n'), ('chrome/e.json', '1\n2\n'), ('chrome/f.ftl', 'k\n'),
                         ('chrome/g.JS', 'upper\n'), ('chrome/dir/', '')], zipfile.ZIP_STORED)
         self.assertEqual(artifact.count_omni(jar), ({'js': 4, 'html': 3}, 4))
+        deflated = make_zip([('modules/a.sys.mjs', 'a\nb\nc\n' * 50), ('chrome/c.css', 'p\nq\n')])
+        self.assertEqual(artifact.count_omni(deflated), ({'js': 150, 'html': 2}, 2))
+
+    def test_count_omni_reads_optimized_jars(self):
+        jar = make_optimized_jar([('modules/a.sys.mjs', 'a\nb\nc\n'), ('chrome/c.css', 'p\nq\n'),
+                                  ('chrome/e.json', '1\n'), ('chrome/', '')])
+        with self.assertRaises(zipfile.BadZipFile):   # what the release omni.ja did to zipfile
+            zipfile.ZipFile(io.BytesIO(jar))
+        self.assertEqual(artifact.count_omni(jar), ({'js': 3, 'html': 2}, 2))
+
+    def test_count_omni_malformed_is_unavailable(self):
+        jar = bytearray(make_zip([('a.js', ''.join('line %d\n' % i for i in range(2000)))]))
+        i = jar.index(b'PK\x03\x04')
+        jar[i + 30 + 4:i + 30 + 12] = b'\xff' * 8   # corrupt the deflated data
+        with self.assertRaisesRegex(artifact.ArtifactUnavailable, 'malformed'):
+            artifact.count_omni(bytes(jar))
+        with self.assertRaisesRegex(artifact.ArtifactUnavailable, 'end of central directory'):
+            artifact.count_omni(b'not a zip' * 10)
 
 
 class RemoteZipTest(unittest.TestCase):
@@ -246,6 +283,11 @@ class FailSoftTest(unittest.TestCase):
         with quiet(), self.assertRaisesRegex(artifact.ArtifactUnavailable, 'package'):
             artifact.artifact_from_build('https://x/s.zip', 'https://x/p.tar.xz', '/nonexistent', ctx=ctx_for(web))
 
+    def test_malformed_index_answer_is_unavailable(self):
+        web = FakeWeb({artifact.INDEX_URL.format(ns=artifact.INDEX): b'["a list, not an object"]'})
+        with self.assertRaisesRegex(artifact.ArtifactUnavailable, 'malformed index answer'):
+            artifact.head_artifact('/nonexistent', ctx=ctx_for(web))
+
     def test_cli_exit_status_and_try_head(self):
         web = FakeWeb({})
         with quiet():
@@ -255,6 +297,77 @@ class FailSoftTest(unittest.TestCase):
                 self.assertIsNone(artifact.try_head('/nonexistent'))
             with mock.patch.object(artifact, 'resolve_index', side_effect=RuntimeError('bug')):
                 self.assertIsNone(artifact.try_head('/nonexistent', ctx=ctx_for(web)))
+
+    def test_bugs_are_not_unavailable(self):
+        """A KeyError outside the parsing of remote data is a bug: the CLI fails (exit 1, traceback) and try_head
+        logs the traceback and returns None."""
+        web = FakeWeb({})
+        with mock.patch.object(artifact, 'resolve_index', side_effect=KeyError('bug')):
+            with quiet(), self.assertRaises(KeyError):
+                artifact.main(['head', '--repo', '/nonexistent'], ctx=ctx_for(web))
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertIsNone(artifact.try_head('/nonexistent', ctx=ctx_for(web)))
+        self.assertIn('Traceback', err.getvalue())
+        self.assertIn("KeyError: 'bug'", err.getvalue())
+
+
+class BrokenHandler(http.server.BaseHTTPRequestHandler):
+    """/chunked: a chunked answer that closes in the middle of a chunk (IncompleteRead while reading the body);
+    /garbage: no HTTP status line at all (BadStatusLine while opening)."""
+    hits = []
+
+    def do_GET(self):
+        BrokenHandler.hits.append(self.path)
+        if self.path.startswith('/chunked'):
+            self.wfile.write(b'HTTP/1.1 200 OK\r\nContent-Type: application/x-xz\r\nTransfer-Encoding: chunked\r\n\r\n'
+                             b'10000\r\n' + b'\xfd7zXZ\x00' + b'x' * 100)
+        else:
+            self.wfile.write(b'garbage\r\n\r\n')
+        self.wfile.flush()
+        self.close_connection = True
+
+    def log_message(self, *a):
+        pass
+
+
+class HttpFailureTest(unittest.TestCase):
+    """Real urllib against a local server that breaks the HTTP protocol: such failures exit 3, never 1."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), BrokenHandler)
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.base = 'http://127.0.0.1:%d' % cls.server.server_address[1]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def ctx(self):
+        no_proxy = urllib.request.build_opener(urllib.request.ProxyHandler({}))   # ignore any http_proxy
+        return artifact.Context(opener=no_proxy.open, sleep=lambda s: None, timeout=10)
+
+    def build(self, package):
+        BrokenHandler.hits.clear()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = artifact.main(['build', '--symbols', self.base + '/garbage/s.zip', '--package', package,
+                                  '--repo', '/nonexistent'], ctx=self.ctx())
+        return code, err.getvalue()
+
+    def test_connection_closed_mid_chunk_exits_3(self):
+        code, err = self.build(self.base + '/chunked/p.tar.xz')
+        self.assertEqual(code, artifact.EXIT_UNAVAILABLE)
+        self.assertIn('IncompleteRead', err)
+
+    def test_bad_status_line_is_retried_then_exits_3(self):
+        code, err = self.build(self.base + '/garbage/p.tar.xz')
+        self.assertEqual(code, artifact.EXIT_UNAVAILABLE)
+        self.assertEqual(BrokenHandler.hits, ['/garbage/p.tar.xz'] * artifact.TRIES)
+        self.assertIn('artifact unavailable', err)
 
 
 def run(cwd, *args):
@@ -377,6 +490,17 @@ class BuildTest(unittest.TestCase):
         self.assertEqual({k: rec[k] for k in history.KEYS}, self.expected)
         self.assertNotIn('fetched_commit', ctx.stats['count'])
         self.assertEqual(ctx.stats['count']['blobs_fetched'], 0)
+
+    def test_source_from_the_caller_is_merged(self):
+        ctx = ctx_for(self.web())
+        src = {'kind': 'candidates', 'symbols': 'S', 'package': 'P', 'libxul_debug_id': 'stale', 'modules': 99}
+        with quiet():
+            rec = artifact.artifact_from_build(artifact.ARTIFACT_URL.format(task='T', name=artifact.SYMBOLS),
+                                               artifact.ARTIFACT_URL.format(task='T', name=artifact.PACKAGE),
+                                               self.up, sha=self.sha, source=src, ctx=ctx)
+        self.assertEqual(rec['source'], {'kind': 'candidates', 'symbols': 'S', 'package': 'P',
+                                         'libxul_debug_id': did(XUL_BID), 'modules': 2, 'paths': len(RECORDED)})
+        self.assertEqual(src['modules'], 99)   # the caller's dict is not modified
 
     def test_unreachable_remote_is_unavailable(self):
         with quiet(), self.assertRaisesRegex(artifact.ArtifactUnavailable, '^count: '):

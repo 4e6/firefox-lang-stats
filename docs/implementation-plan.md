@@ -92,14 +92,19 @@ manual steps, and the browser-artifact series exists at least for the current re
 ```
 
 - `v` is the major release number (integer). `artifact` is `null` or the same nine keys plus `"sha"` (the commit its file
-  list was counted at) and `"source"` (`"symbols"` with the symbol origin and build ids, or `"candidates"`).
+  list was counted at) and `"source"`, an object that says where the file list came from:
+  `{"kind","libxul_debug_id","modules","paths"}` plus, for the head (`"kind":"symbols"`), `"index"` (the Taskcluster
+  namespace) and `"task"`, and for a release (`"kind":"candidates"`, written by `dev/history.py set-artifact`),
+  `"symbols"` and `"package"` (the URLs of the release candidate build's files). `libxul_debug_id`, `modules` (modules
+  read) and `paths` (repository paths kept) are measured. Consumers sum only the nine language keys.
 - `reference/history/history.py` writes exactly this shape (key order inside a record is `rust, c, h, cpp, ...`, which does not matter), except `header_split` (add it) and `artifact` (always `null`).
 - Totals are not stored; the page sums the language columns. Test lines are `all` minus `nontest`.
 
 ### `build/data.json` (deployed; what the page loads)
 
 `data/history.json` merged with a `head` object (same shape as a release without `v`, `tag`: `{"sha","date","all","nontest","artifact"}`)
-and the legacy fields `meta_date` (ISO time of the run), `title_date` (for example `"Oct 2026"`) and `lang` (the old
+(its `artifact` comes from `build-site --with-artifact`, is counted at the build's own commit, which is usually older than
+`head.sha`, and is `null` when it cannot be computed) and the legacy fields `meta_date` (ISO time of the run), `title_date` (for example `"Oct 2026"`) and `lang` (the old
 pie: name and lines for Rust, C, C++, JavaScript, HTML, Python, Java, Assembly, from `head.all` with the header split applied).
 
 ### `data/artifact-files/<version>.txt`
@@ -241,9 +246,17 @@ recomputed each run.
 Checks: Rust about 16-17% of the artifact total for Firefox 157 (2.0M Rust lines, 5.6M C++, 2.3M C, 1.8-2.0M JavaScript, from the research);
 the file list for the release has 19,000-20,000 paths; the job still succeeds with the artifact step disabled.
 
+Status (2026-10-05): implemented in #20, not yet live. The head artifact is computed by `build-site --with-artifact` in the weekly job (null on any
+failure). Release 157 was filled once with `history.py set-artifact` from `157.0-candidates/build1`: 11,853,915 lines,
+Rust 1,931,822 (16.30%), C++ 5.71M and C 2.01M after the header split, JavaScript 1.98M, 19,289 paths. The head at
+mozilla-central build `0b3661d5` gave 12,235,473 lines, Rust 2,041,650 (16.69%). Release builds pack `omni.ja` as an
+optimized jar that Python's `zipfile` rejects; `dev/artifact.py` reads it with its own zip reader. New releases are still
+appended with `artifact: null`: running `set-artifact` for each one in the weekly job is part of Task 6.
+
 ### Task 6: artifact history (later)
 
-Only after tasks 0 to 5 are merged and live. Releases 49 to 129 and 144 to 157 come from `candidates/`, 131.0.2 to 143 from the
+Only after tasks 0 to 5 are merged and live. First: run `history.py set-artifact` automatically for each release that `append`
+adds (its last `build<N>` under `candidates/<v>.0-candidates/`; `null` and a log line if it fails). Then the backfill: releases 49 to 129 and 144 to 156 come from `candidates/`, 131.0.2 to 143 from the
 saved lists in `data/artifact-files/`. Handle the three FILE record eras described in `reference/symbols/README.md`. Start with
 147 to 157 (git paths); older eras need hg-prefix stripping and per-era exclusion rules. Versions that cannot be covered stay `null`.
 

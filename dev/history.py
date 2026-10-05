@@ -11,9 +11,19 @@ Subcommands:
                            `git ls-remote --tags origin`, fetch each missing tag with `git fetch --depth 1` and count it
                            (works on the workflow's depth-1 checkout, which has no tags; never lists local tags)
   head REPO                count HEAD of a checkout and print {"sha","date","all","nontest","artifact"}
-  build-site HISTORY --repo R --out DIR
+  build-site HISTORY --repo R --out DIR [--with-artifact]
                            write DIR/data.json: the history, the head point of R and the legacy fields of the old
-                           pie chart (meta_date, title_date, lang)
+                           pie chart (meta_date, title_date, lang). --with-artifact also computes head.artifact, the
+                           browser artifact of the newest finished mozilla-central linux64-opt build (dev/artifact.py);
+                           when it cannot be computed it is null and the command still succeeds
+  set-artifact HISTORY --v N --symbols URL --package URL --repo R
+                           compute the browser artifact of release N from its build's crashreporter-symbols.zip and
+                           package (for example Mozilla's release candidates) and store it in that release's record,
+                           the only change to the file. Refuses a release that already has one; exit status 3 (file
+                           untouched) if the artifact cannot be computed. For release N the build is the last
+                           build<B> directory of https://archive.mozilla.org/pub/firefox/candidates/N.0-candidates/
+                           and its linux-x86_64/en-US/ files firefox-N.0.crashreporter-symbols.zip and
+                           firefox-N.0.tar.xz (.tar.bz2 for older releases)
 
 `backfill` and `head` skip paths under `mobile/` by default (desktop browser only). `--exclude PREFIX` (repeatable)
 replaces that default, `--no-exclude` counts everything. `append` and `build-site` take the prefixes from the
@@ -439,16 +449,84 @@ def append(history, repo, remote='origin'):
     return len(todo)
 
 
-def build_site(history, repo, out_dir, now=None):
-    """Write out_dir/data.json: legacy fields, the history header and releases, and the head point of `repo`."""
+EXIT_UNAVAILABLE = 3   # set-artifact: the artifact cannot be computed (same status as dev/artifact.py)
+
+
+def _artifact_module():
+    """dev/artifact.py, imported on first use (it imports this module, so not at the top)."""
+    import artifact
+    return artifact
+
+
+def head_artifact(repo, excludes=DEFAULT_EXCLUDES, index=None, deadline=None):
+    """The `artifact` block of the newest finished mozilla-central build, or None. Never raises (except
+    KeyboardInterrupt): every failure, a bug included, is logged and gives None, so the weekly job carries on."""
+    t0 = time.time()
+    try:
+        artifact = _artifact_module()
+        ctx = artifact.Context(deadline or artifact.DEADLINE)
+        kw = {'index': index} if index else {}
+        block = artifact.try_head(repo, excludes=excludes, ctx=ctx, **kw)
+    except Exception as e:
+        import traceback
+        log('head artifact: failed (a bug): %s: %s\n%s' % (type(e).__name__, e, traceback.format_exc().rstrip()))
+        block, ctx = None, None
+    if block is None:
+        log('head artifact: none this run (reason above); head.artifact is null, the build goes on (%.0fs)'
+            % (time.time() - t0))
+        return None
+    total = sum(block[k] for k in KEYS)
+    log('head artifact: build commit %s, %d lines, Rust %.2f%%; seconds %s, bytes %s' % (
+        block['sha'][:12], total, 100.0 * block['rust'] / max(total, 1), json.dumps(ctx.stats.get('seconds')),
+        json.dumps(ctx.stats.get('bytes'))))
+    return block
+
+
+def build_site(history, repo, out_dir, now=None, with_artifact=False, artifact_index=None, artifact_deadline=None):
+    """Write out_dir/data.json: legacy fields, the history header and releases, and the head point of `repo`.
+
+    with_artifact: also compute head.artifact (null when it cannot be computed; never an error). Its `sha` is the
+    commit of the build it was counted at, which is usually a little older than head.sha."""
     meta, records = read_history(history)
     head = count_release(repo, 'HEAD', meta.get('excluded_prefixes', ()))
+    if with_artifact:
+        head['artifact'] = head_artifact(repo, tuple(meta.get('excluded_prefixes', ())), artifact_index,
+                                         artifact_deadline)
     now = now or datetime.now(timezone.utc).replace(microsecond=0)
     header = dict(legacy_fields(head['all'], meta.get('header_split', HEADER_SPLIT), now), **meta)
     path = os.path.join(out_dir, 'data.json')
     write_atomic(path, format_history(header, records, {'head': head}))
     log('wrote %s: %d releases and the head at %s' % (path, len(records), head['sha'][:12]))
     return path
+
+
+def set_artifact(history, v, symbols, package, repo, kind='candidates'):
+    """Store the browser artifact of release `v` in `history`, computed from its build's symbols zip and package.
+
+    The artifact is a property of the release: computed once, never overwritten. The FILE records of the build must
+    name the release's own commit (the record's sha). Only that record changes: the file is rewritten with the same
+    writer, and refused if it is not already in that exact layout. Raises artifact.ArtifactUnavailable (file
+    untouched) if the artifact cannot be computed, HistoryError for a usage problem."""
+    with open(history, encoding='utf-8') as f:
+        before = f.read()
+    meta, records = read_history(history)
+    if format_history(meta, records) != before:
+        raise HistoryError('%s is not in the layout format_history() writes; refusing to rewrite it' % history)
+    rec = next((r for r in records if r['v'] == v), None)
+    if rec is None:
+        raise HistoryError('release %d is not in %s' % (v, history))
+    if rec.get('artifact') is not None:
+        raise HistoryError('release %d already has an artifact (a stored artifact is never recomputed)' % v)
+    artifact = _artifact_module()
+    block = artifact.artifact_from_build(symbols, package, repo, sha=rec['sha'],
+                                         source={'kind': kind, 'symbols': symbols, 'package': package},
+                                         excludes=tuple(meta.get('excluded_prefixes', ())))
+    rec['artifact'] = block
+    write_atomic(history, format_history(meta, records))
+    total = sum(block[k] for k in KEYS)
+    log('release %d: artifact at %s, %d lines, Rust %.2f%%, %d paths' % (
+        v, block['sha'][:12], total, 100.0 * block['rust'] / max(total, 1), block['source']['paths']))
+    return block
 
 
 def resolve_excludes(a, parser):
@@ -493,12 +571,31 @@ def main(argv=None):
     p.add_argument('history')
     p.add_argument('--repo', required=True)
     p.add_argument('--out', required=True, help='output directory (e.g. build)')
+    p.add_argument('--with-artifact', action='store_true',
+                   help='also compute head.artifact (null, not an error, when it cannot be computed)')
+    p.add_argument('--artifact-index', metavar='NS',
+                   help='Taskcluster index namespace of the head build (default: mozilla-central linux64-opt)')
+    p.add_argument('--artifact-deadline', type=float, metavar='SECONDS',
+                   help='time limit for the head artifact (default: dev/artifact.py\'s, 20 minutes)')
+
+    p = sub.add_parser('set-artifact', help='store the browser artifact of release V, computed from its build')
+    p.add_argument('history')
+    p.add_argument('--v', type=int, required=True, help='major release number')
+    p.add_argument('--symbols', required=True, help='URL of the build\'s crashreporter-symbols.zip')
+    p.add_argument('--package', required=True, help='URL of the build\'s package (.tar.xz or .tar.bz2)')
+    p.add_argument('--repo', required=True, help='a clone of mozilla-firefox/firefox (only read)')
+    p.add_argument('--kind', default='candidates', help='source.kind to store (default %(default)s)')
 
     a = ap.parse_args(argv)
     try:
         run(a, ap)
     except HistoryError as e:
         ap.exit(1, '%s: error: %s\n' % (ap.prog, e))
+    except Exception as e:
+        if a.cmd == 'set-artifact' and isinstance(e, _artifact_module().ArtifactUnavailable):
+            log('artifact unavailable: %s; %s left unchanged' % (e, a.history))
+            return EXIT_UNAVAILABLE
+        raise
     return 0
 
 
@@ -514,8 +611,13 @@ def run(a, ap):
         else:
             sys.stdout.write(text)
     elif a.cmd == 'build-site':
-        build_site(a.history, a.repo, a.out)
+        build_site(a.history, a.repo, a.out, with_artifact=a.with_artifact, artifact_index=a.artifact_index,
+                   artifact_deadline=a.artifact_deadline)
+    elif a.cmd == 'set-artifact':
+        set_artifact(a.history, a.v, a.symbols, a.package, a.repo, a.kind)
 
 
 if __name__ == '__main__':
+    # dev/artifact.py imports `history`: let it get this module, not a second copy (one HistoryError class)
+    sys.modules.setdefault('history', sys.modules[__name__])
     sys.exit(main())

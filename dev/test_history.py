@@ -16,6 +16,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import history  # noqa: E402
+import artifact  # noqa: E402
 
 # (path, number of lines, language key or None if not counted, test path?)
 FILES = [
@@ -563,6 +564,149 @@ class BuildSiteTest(GitTestCase):
         self.assertTrue(data['meta_date'].endswith('+00:00'))
         self.assertLess(abs((datetime.fromisoformat(data['meta_date']) - now).total_seconds()), 300)
         self.assertEqual(len(data['lang']), 8)
+
+
+def fake_block(sha, rust=7, kind='symbols'):
+    blk = dict.fromkeys(history.KEYS, 0)
+    blk.update(rust=rust, cpp=20, h=10, js=5, sha=sha,
+               source={'kind': kind, 'libxul_debug_id': 'ABC0', 'modules': 2, 'paths': 30})
+    return blk
+
+
+class BuildSiteArtifactTest(GitTestCase):
+    """build-site --with-artifact: head.artifact is the block when it can be computed, else null; never an error."""
+
+    def build(self, *extra):
+        out = self.mkdtemp()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = history.main(['build-site', self.full_history, '--repo', self.up, '--out', out] + list(extra))
+        with open(os.path.join(out, 'data.json')) as f:
+            return code, json.load(f), err.getvalue()
+
+    def test_block_is_stored_in_head(self):
+        blk = fake_block('b' * 40)
+        seen = {}
+
+        def fake_try_head(repo, **kw):
+            seen.update(kw, repo=repo)
+            return blk
+        with mock.patch.object(artifact, 'try_head', fake_try_head):
+            code, data, err = self.build('--with-artifact', '--artifact-index', 'some.index', '--artifact-deadline', '60')
+        self.assertEqual(code, 0)
+        self.assertEqual(data['head']['artifact'], blk)
+        self.assertNotEqual(data['head']['artifact']['sha'], data['head']['sha'])   # the build's commit, not head's
+        self.assertEqual(seen['repo'], self.up)
+        self.assertEqual(seen['index'], 'some.index')
+        self.assertEqual(seen['excludes'], ('mobile/',))
+        self.assertLess(seen['ctx'].deadline - seen['ctx'].t0, 61)
+        self.assertIn('head artifact: build commit bbbbbbbbbbbb', err)
+        hist = json.loads(self.full_bytes)
+        self.assertEqual(data['releases'], hist['releases'])
+
+    def test_unavailable_gives_null(self):
+        # the real try_head against an index namespace that does not exist: a 404, no network beyond that
+        urls = []
+
+        def web(req, timeout=None):
+            urls.append(req.full_url)
+            raise artifact.urllib.error.HTTPError(req.full_url, 404, 'Not Found', {}, None)
+        real = artifact.Context
+        with mock.patch.object(artifact, 'Context', lambda deadline: real(deadline, opener=web, sleep=lambda s: None)):
+            code, data, err = self.build('--with-artifact', '--artifact-index', 'no.such.index')
+        self.assertEqual(urls, [artifact.INDEX_URL.format(ns='no.such.index')])
+        self.assertEqual(code, 0)
+        self.assertIsNone(data['head']['artifact'])
+        self.assertIn('HTTP 404', err)
+        self.assertIn('head artifact: none this run', err)
+
+    def test_bug_gives_null_with_traceback(self):
+        with mock.patch.object(artifact, 'head_artifact', side_effect=KeyError('bug')):
+            code, data, err = self.build('--with-artifact')
+        self.assertEqual(code, 0)
+        self.assertIsNone(data['head']['artifact'])
+        self.assertIn('Traceback', err)
+        with mock.patch.object(artifact, 'Context', side_effect=RuntimeError('bug outside try_head')):
+            code, data, err = self.build('--with-artifact')
+        self.assertEqual(code, 0)
+        self.assertIsNone(data['head']['artifact'])
+        self.assertIn('bug outside try_head', err)
+
+    def test_without_the_flag_no_artifact_is_computed(self):
+        with mock.patch.object(artifact, 'try_head', side_effect=AssertionError('must not be called')):
+            code, data, err = self.build()
+        self.assertEqual(code, 0)
+        self.assertIsNone(data['head']['artifact'])
+
+
+class SetArtifactTest(GitTestCase):
+    def copy(self):
+        path = os.path.join(self.mkdtemp(), 'history.json')
+        shutil.copy(self.full_history, path)
+        return path
+
+    def run_cli(self, path, v=48):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            try:
+                code = history.main(['set-artifact', path, '--v', str(v), '--symbols', 'https://x/s.zip',
+                                     '--package', 'https://x/p.tar.xz', '--repo', self.up])
+            except SystemExit as e:   # HistoryError: the message and exit status 1
+                code = e.code
+        return code, err.getvalue()
+
+    def test_sets_one_record_and_changes_one_line(self):
+        path = self.copy()
+        sha48 = json.loads(self.full_bytes)['releases'][-1]['sha']
+        calls = []
+
+        def fake(symbols, package, repo, sha=None, source=None, excludes=None, **kw):
+            calls.append((symbols, package, repo, sha, source, excludes))
+            return fake_block(sha, kind=source['kind'])
+        with mock.patch.object(artifact, 'artifact_from_build', fake):
+            code, err = self.run_cli(path)
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [('https://x/s.zip', 'https://x/p.tar.xz', self.up, sha48,
+                                  {'kind': 'candidates', 'symbols': 'https://x/s.zip', 'package': 'https://x/p.tar.xz'},
+                                  ('mobile/',))])
+        with open(path, 'rb') as f:
+            after = f.read()
+        old, new = self.full_bytes.decode().split('\n'), after.decode().split('\n')
+        self.assertEqual(len(old), len(new))
+        changed = [i for i, (a, b) in enumerate(zip(old, new)) if a != b]
+        self.assertEqual(len(changed), 1)
+        rec = json.loads(new[changed[0]].rstrip(','))
+        self.assertEqual(rec['v'], 48)
+        self.assertEqual(rec['artifact'], fake_block(sha48, kind='candidates'))
+        self.assertEqual(list(rec), ['v', 'tag', 'sha', 'date', 'all', 'nontest', 'artifact'])
+        # a stored artifact is never recomputed
+        with mock.patch.object(artifact, 'artifact_from_build', side_effect=AssertionError('must not be called')):
+            code, err = self.run_cli(path)
+        self.assertEqual(code, 1)
+        self.assertIn('already has an artifact', err)
+        with open(path, 'rb') as f:
+            self.assertEqual(f.read(), after)
+
+    def test_unavailable_leaves_the_file_and_exits_3(self):
+        path = self.copy()
+        with mock.patch.object(artifact, 'artifact_from_build',
+                               side_effect=artifact.ArtifactUnavailable('symbols: FILE records name x, expected y')):
+            code, err = self.run_cli(path)
+        self.assertEqual(code, history.EXIT_UNAVAILABLE)
+        self.assertIn('left unchanged', err)
+        with open(path, 'rb') as f:
+            self.assertEqual(f.read(), self.full_bytes)
+
+    def test_unknown_release_and_foreign_layout(self):
+        path = self.copy()
+        code, err = self.run_cli(path, v=99)
+        self.assertEqual(code, 1)
+        self.assertIn('release 99 is not in', err)
+        with open(path, 'w') as f:
+            json.dump(json.loads(self.full_bytes), f, indent=1)
+        code, err = self.run_cli(path)
+        self.assertEqual(code, 1)
+        self.assertIn('refusing to rewrite', err)
 
 
 if __name__ == '__main__':

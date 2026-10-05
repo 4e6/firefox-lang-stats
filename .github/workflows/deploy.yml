@@ -54,10 +54,13 @@ jobs:
           $TIME python3 dev/history.py build-site data/history.json --repo firefox --out build \
             --with-artifact --artifact-deadline 900
           cp site/index.html rustacean-orig-noshadow.ico rustacean-orig-noshadow.png build/
+          # docs/methodology.md -> build/methodology.html (stdlib only; exits 1 on Markdown it does not support)
+          python3 dev/render_docs.py docs/methodology.md --page site/index.html --out build/methodology.html
           python3 - <<'EOF'
           import json, os
-          for f in ('index.html', 'data.json', 'rustacean-orig-noshadow.ico', 'rustacean-orig-noshadow.png'):
+          for f in ('index.html', 'data.json', 'methodology.html', 'rustacean-orig-noshadow.ico', 'rustacean-orig-noshadow.png'):
               assert os.path.getsize(os.path.join('build', f)) > 0, f
+          assert 'href="methodology.html"' in open('build/index.html').read(), 'index.html does not link methodology.html'
           site = json.load(open('build/data.json'))
           hist = json.load(open('data/history.json'))
           assert site['releases'] == hist['releases'], 'releases differ from data/history.json'

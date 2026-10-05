@@ -11,9 +11,13 @@ Firefox 46 to the current head of the default branch. It has four views:
 - **Pie + scrubber**: one release at a time, with the change against the previous one.
 
 Each view offers three series: **all files** (every tracked file), **non-test files** (test paths dropped) and
-**browser artifact** (the code built into the Linux x86-64 desktop browser; so far for release 157 and the head, see
-below). `mobile/` is excluded from every series. Lines are counted by file extension: Rust, C, C++,
-C/C++ headers (split 18.5% C, 81.5% C++ at display time), JavaScript, HTML/CSS, Python, Java and Assembly.
+**browser artifact** (the code built into the Linux x86-64 desktop browser; so far for release 157 and the head).
+`mobile/` is excluded from every series. The (?) next to the view switch on the page explains them briefly.
+
+**How the numbers are made, and how far to trust them: [`docs/methodology.md`](docs/methodology.md)**, published with
+the site as [methodology.html][methodology]. It covers the counting rules, the extension and test rules, the header
+split, the browser-artifact method, the release set, the data files, known limitations and how to reproduce
+everything.
 
 ## How the data is built
 
@@ -28,7 +32,8 @@ for the subcommands, the language and test rules, and the release set.
   2. `history.py append` adds the releases missing from `data/history.json`, fetching each new tag at depth 1;
   3. `history.py build-site --with-artifact` counts the head of Firefox, computes the head's browser artifact
      (below) and writes `build/data.json`; the page (`site/index.html`) and the favicon and `og:image` files are
-     copied next to it;
+     copied next to it, and `dev/render_docs.py` renders `docs/methodology.md` to `build/methodology.html` (standard
+     library only; it fails the step on Markdown it does not support);
   4. on `main` only, if `data/` changed, it commits `data: add releases` as `github-actions[bot]` straight to `main`;
   5. on `main` only, it deploys `build/` to the `gh-pages` branch, replacing its whole content.
 
@@ -39,19 +44,9 @@ for the subcommands, the language and test rules, and the release set.
 
 ### The browser-artifact series
 
-What ships is learnt from Mozilla's own build outputs, never from a local build (`dev/artifact.py`, Python
-standard library and git only):
-
-1. stream the build's package (`target.tar.xz`, or the release tarball) once: the build id of every ELF file, and
-   the JavaScript, CSS and HTML lines of the files inside `omni.ja` and `browser/omni.ja` (shipped lines: bundled
-   and preprocessed);
-2. range-read only the headers of the shipped modules' `.sym` files in the build's `crashreporter-symbols.zip`,
-   picked by module name and debug id (the zip also holds test binaries and a gtest `libxul.so`);
-3. keep the repository paths of their `FILE` records (about 19,000-20,000), which all name one git commit;
-4. count Rust, C, C++, headers, Python and Java lines of those paths at that commit with the same rules as the
-   other series. Missing objects are fetched into a throwaway repository; the `--repo` checkout is only read.
-
-Assembly is not covered (shown as "not counted"); Python and Java do not ship (0).
+What ships is learnt from Mozilla's own build outputs (the package and the `FILE` records of its debug symbols),
+never from a local build: `dev/artifact.py`, Python standard library and git only. The method step by step, and what
+it leaves out, is in [`docs/methodology.md`](docs/methodology.md#browser-artifact).
 
 - **Head** (every run, `build/data.json` only): the newest finished mozilla-central `linux64-opt` build from the
   Taskcluster index. Its `sha` is the build's commit, usually a few hours older than `head.sha`; the page says so.
@@ -108,6 +103,7 @@ python3 dev/history.py append data/history.json --repo firefox   # add new relea
 mkdir -p build
 python3 dev/history.py build-site data/history.json --repo firefox --out build --with-artifact
 cp site/index.html rustacean-orig-noshadow.ico rustacean-orig-noshadow.png build/
+python3 dev/render_docs.py docs/methodology.md --page site/index.html --out build/methodology.html
 python3 -m http.server -d build                                  # then open http://localhost:8000
 ```
 
@@ -123,6 +119,7 @@ produced by `dev/artifact-files` and kept for the browser-artifact series; see `
 
 ## Documents
 
+- `docs/methodology.md`: how the numbers are made and how far to trust them (published as `methodology.html`).
 - `docs/shipped-code-research.md`: what ships in the browser, and the storage design.
 - `docs/implementation-plan.md`: the plan this pipeline follows.
 - `docs/reference/`: prototype code, measured data and the design preview.
@@ -130,3 +127,4 @@ produced by `dev/artifact-files` and kept for the browser-artifact series; see `
 
 [mozilla-firefox/firefox]: https://github.com/mozilla-firefox/firefox
 [gh-pages]: https://4e6.github.io/firefox-lang-stats/
+[methodology]: https://4e6.github.io/firefox-lang-stats/methodology.html

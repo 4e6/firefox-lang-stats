@@ -1,0 +1,4 @@
+# Firefox checkout used by the workflow and local runs
+/firefox/
+# site output of dev/history.py build-site
+/build/

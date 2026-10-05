@@ -1,7 +1,8 @@
 # Symbol-file prototypes
 
-Tools used to find out which source files ship in a release. **There is no end-to-end extractor yet**; writing one is
-step 0 of `../../implementation-plan.md`. These scripts are the parts, each run and working during the research.
+Tools used to find out which source files ship in a release. The end-to-end extractor built from them is
+`dev/artifact-files` (Task 0 of `../../implementation-plan.md`). These scripts are the parts, each run and working during
+the research.
 
 | File | What it does |
 |---|---|

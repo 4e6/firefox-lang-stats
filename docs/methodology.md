@@ -14,7 +14,7 @@ from 46 to the newest one and for the current head of the default branch of
 | View | What is counted | Releases covered |
 |---|---|---|
 | All files | Every file tracked by git at the release tag (or the head) with a counted extension, `mobile/` included | Every major release from 46 and the head |
-| Browser files | The same files minus `mobile/` (the Android and iOS code) and minus the files matched by the test rules | Every major release from 46 and the head |
+| Browser files | The same files minus `mobile/` (mostly Android code) and minus the files matched by the test rules | Every major release from 46 and the head |
 
 A release without data in a view is drawn as a gap, never as zero.
 

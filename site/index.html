@@ -295,7 +295,7 @@ function helpFill(pop) {
   const sp = D.split, f = v => (v * 100).toFixed(1) + '%';
   pop.appendChild(para([['b', 'All files'], ': every file tracked by git at the release tag (or the current head), counted by file extension, ',
     ['code', 'mobile/'], ' included. Lines are newline counts, not lines of code.']));
-  pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (the Android and iOS code) and minus files matched by the test rules. '
+  pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (mostly Android code) and minus files matched by the test rules. '
     + 'It keeps the desktop code for every platform, plus vendored third-party code, build tooling and docs. The test rules were written for today\'s tree, so values for older releases are less reliable.']));
   pop.appendChild(para(['Header files (', ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp)
     + ' C++. Kotlin is not counted. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));

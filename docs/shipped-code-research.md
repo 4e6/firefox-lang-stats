@@ -330,8 +330,8 @@ lines, so keep one release per line.
    `v: 125`, and say so in the record, so it is not fetched again every week. The majors-only file then has 112
    records (111 tagged majors plus 125).
 3. It computes the head point and merges everything into `build/data.json`.
-4. It commits the appended line to `main`. Decide whether it pushes directly or opens a pull request (branch protection
-   on `main` was not checked). The workflow also runs on `pull_request` and on every push to `main`, so gate the commit
+4. It commits the appended line to `main` directly (decided; branch protection on `main` was not checked, and a protected
+   branch would force a pull request instead). The workflow also runs on `pull_request` and on every push to `main`, so gate the commit
    step like the Deploy step, put it in a `concurrency` group, and rebase before pushing so a push run and the cron run
    cannot race. A push made with the default token does not trigger another run, which is what we want here.
 
@@ -360,10 +360,28 @@ other directory names, so earlier non-test values are less reliable than recent 
 - **A split of lines into tests, `third_party` and the rest.** None of the four views needs it, and `all` minus
   `nontest` already gives test lines. Adding it later means one full recompute (8-12 minutes), so it is cheap to defer.
   Store it now only if a "vendored vs written by Mozilla" toggle is planned.
-- **File lists.** The records hold counts only. The exception is the symbol file lists for releases 131.0.2 to 143,
-  which exist only on a server that appears to delete them after about two years (see History). Those lists are
-  about 1-2 MB per module and should be kept somewhere outside `history.json` (for example as release assets or on a
-  separate data branch), because the counts could not be recomputed once the symbols expire.
+- **File lists.** The records hold counts only. The exception is the list of source files behind each release's browser
+  artifact, for releases 131.0.2 to 143 (and 140.0esr to 140.3.1esr), whose symbols exist only on a server that appears
+  to delete them after about two years (see History). Without the list, the counts of those releases cannot be
+  recomputed after a method change. What has to be kept is small: only the sorted repository paths, one per line,
+  deduplicated across modules. Measured on release 157: 19,124 paths, 0.79 MB as text, 112 KB gzipped (the nightly list is
+  similar). A simulation of 14 consecutive lists with 3% change between releases (synthetic, real churn is unknown) packs
+  into about 200 KB in git when stored as plain text, because git deltas similar lists. The JavaScript side does not
+  expire: the release tarballs stay on `archive.mozilla.org/pub/firefox/releases/`.
+
+  Options for where to keep them (undecided):
+
+  | Option | Cost | For | Against |
+  |---|---|---|---|
+  | 1. `data/artifact-files/<version>.txt` on `main` (plain sorted text) | about 0.8 MB per file in the checkout, about 200 KB for 14 releases in git history (estimate) | Simplest. Same workflow and permissions. Diffable and reviewable. Moves easily to another option later | Adds data files to `main`; they stay in history |
+  | 2. Same files on an orphan `data` branch | Same size | Keeps `main` clean | A second long-lived branch to explain and check out in the workflow |
+  | 3. GitHub Release assets (one `.txt.gz` per version) | about 112 KB each | Out of git history; easy to delete or replace | Needs API calls in the workflow; not diffable; tied to the repository |
+  | 4. Keep counts only | none | No upkeep | After a method change those releases are either frozen at the old method or dropped from the series |
+  | 5. External archive (Zenodo, Internet Archive, own bucket) | none in the repo | Permanent, citable | A new outside dependency and a public upload for 200 KB of data |
+
+  Recommendation: option 1, for the expiring releases now. Whether to keep lists for every future release as insurance
+  is a separate choice: `candidates/` already lost builds 130-143 without explanation. At about 13 majors a year that is
+  about 1.5 MB a year as `.gz` files (no delta in git) or about 10 MB a year of plain text in the checkout.
 
 ## What is not counted
 
@@ -404,8 +422,8 @@ from the toolchains. The symbol approach does not see these as repo files.
 3. What "shipped" should mean for the chart: lines in files that contribute code (about 17% Rust), or machine-code
    bytes (libxul about 26% with the standard library, about 15% without)?
 4. Depend on Mozilla's CI artifacts in the weekly cron, with the static fallback if they are missing?
-5. Storage: commit the weekly update to `main` directly or through a pull request? Keep raw header counts and a
-   test/`third_party`/rest split now, or defer the split? Where to keep the expiring symbol file lists?
+5. Storage: keep raw header counts and a test/`third_party`/rest split now, or defer the split? Where to keep the
+   expiring symbol file lists (options below)? The weekly update is committed to `main` directly (decided).
 
 ## Suggested order
 

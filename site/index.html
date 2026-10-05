@@ -347,7 +347,7 @@ function drawMultiples(wrap) {
   wrap.textContent = '';
   const view = st.view, f0 = firstIdx(view), li = lastIdx(view), isS = st.dmode === 'share';
   const V = (k, i) => notCounted(view, k) ? null : isS ? share(view, k, i) : val(view, k, i), F = isS ? pct : lines;
-  const head = (k, i) => notCounted(view, k) ? 'not counted' : rec(view, i) ? F(V(k, i)) : 'no data';
+  const head = (k, i) => !rec(view, i) ? 'no data' : notCounted(view, k) ? 'not counted' : F(V(k, i));
   const grid = el('div', 'mini-grid'); wrap.appendChild(grid);
   const panels = [];
   for (const L of LANGS) {

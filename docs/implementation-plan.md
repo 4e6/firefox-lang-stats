@@ -22,9 +22,9 @@ manual steps, and the browser-artifact series exists at least for the current re
 
 ## Before you start
 
-1. **Confirm merge permission.** Merging to `main` deploys the live site. The owner asked for the work to be carried
-   through to the end; if you cannot confirm that includes merging and deploying, stop after the pull request is green
-   and reviewed, and say so.
+1. **Merge permission is granted.** The owner approved, on 2026-10-05, that the implementer may merge to `main` and deploy. Still merge
+   only when the conditions in the review convention below hold, verify the live site after each deploy, and if the deploy breaks it, revert
+   the change, redeploy and report.
 2. **The time-critical task is task 0.** Symbols for Firefox 131.0.2 expire from the symbol server around 2026-10-08, and
    later releases follow every few weeks. If that date has passed, extract whatever is still available and record what
    was lost.
@@ -43,6 +43,7 @@ manual steps, and the browser-artifact series exists at least for the current re
 |---|---|
 | Scope | Desktop browser only. `mobile/` is excluded from every series |
 | Series | Add the browser artifact next to the tracked series; do not replace anything |
+| Delivery | The implementer may merge to `main` and deploy (approved 2026-10-05) |
 | Weekly commits | The weekly job commits to `main` directly. Verified: `main` has no branch protection and the workflow's default token permission is `write` |
 | Symbol file lists | Kept in `data/artifact-files/<version>.txt` on `main`, for the expiring releases only (131.0.2 to 143 and 140.0esr to 140.3.1esr) |
 | Views | The four above, in that order. Drop tab E (line + pie) |

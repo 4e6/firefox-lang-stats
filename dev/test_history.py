@@ -39,7 +39,7 @@ FILES = [
     ('browser/r.xhtml', 1, 'html', False),
     ('browser/s.htm', 1, 'html', False),
     ('browser/t.xht', 1, 'html', False),
-    ('python/tool.py', 2, 'py', False),
+    ('python/tool.py', 2, 'py', False),   # v4: python/ is tooling, in "all" but not in "browser"
     ('browser/J.java', 1, 'java', False),
     ('browser/Foo.kt', 4, 'kt', False),
     ('media/x.asm', 2, 'asm', False),
@@ -156,7 +156,7 @@ def body(n):
     return ''.join('line %d\n' % i for i in range(n))
 
 
-def expected(files, browser_excluded=('mobile/',)):
+def expected(files, browser_excluded=history.BROWSER_EXCLUDED_PREFIXES):
     """(all, browser): all counts every file of a counted language; browser drops the prefixes and the tests."""
     allc, browser = dict.fromkeys(history.KEYS, 0), dict.fromkeys(history.KEYS, 0)
     for path, n, lang, test in files:
@@ -334,6 +334,83 @@ class CountTest(GitTestCase):
         self.assertEqual(b['browser']['rust'] - a['browser']['rust'], 27)
 
 
+# v4: tooling prefixes of the "browser" view. (path, lines, language key, excluded from "browser"?)
+TOOLING = [
+    ('build/clang-plugin/Checker.cpp', 3, 'cpp', True),
+    ('build/pgo/index.html', 4, 'html', True),
+    ('docs/conf.py', 2, 'py', True),
+    ('python/mozbuild/mozbuild/base.py', 5, 'py', True),
+    ('taskcluster/docker/x/main.rs', 6, 'rust', True),
+    ('third_party/node/node_modules/webpack/lib/a.js', 7, 'js', True),
+    ('third_party/python/pip/pip/a.py', 8, 'py', True),
+    ('tools/@types/lib.gecko.dom.d.ts', 9, 'ts', True),
+    ('tools/lint/eslint/plugin.mjs', 2, 'js', True),
+    ('tools/lint/rust/x.rs', 3, 'rust', True),
+    ('tools/tryselect/selectors/fuzzy.py', 4, 'py', True),
+    # shipped code and look-alike names stay in "browser"
+    ('tools/profiler/core/platform.cpp', 10, 'cpp', False),   # the Gecko Profiler, compiled into libxul
+    ('tools/fuzzing/interface/a.cpp', 2, 'cpp', False),
+    ('tools/performance/PerfStats.cpp', 2, 'cpp', False),
+    ('build/unix/elfhack/elfhack.cpp', 3, 'cpp', False),
+    ('build/rust/shim/lib.rs', 4, 'rust', False),
+    ('build/moz.configure/init.configure.py', 1, 'py', False),   # only the listed build/ subdirectories go
+    ('config/nsinstall.c', 2, 'c', False),
+    ('devtools/client/a.js', 3, 'js', False),
+    ('js/src/vm/a.cpp', 3, 'cpp', False),
+    ('third_party/rust/serde/src/lib.rs', 5, 'rust', False),
+    ('third_party/js/PKI.js/a.ts', 2, 'ts', False),
+    ('third_party/nodejs/a.js', 2, 'js', False),     # a prefix is a directory, not a name prefix
+    ('tools/lintx/a.py', 2, 'py', False),
+    ('mytools/lint/a.py', 2, 'py', False),
+    ('src/python/a.py', 2, 'py', False),              # matched from the start of the path only
+    ('browser/docs/a.js', 2, 'js', False),
+]
+
+
+class ToolingPrefixTest(GitTestCase):
+    """The v4 tooling prefixes leave "browser" and never "all"; shipped code under tools/ and build/ stays."""
+
+    def test_prefix_table(self):
+        self.assertEqual(history.METHOD_VERSION, 4)
+        self.assertEqual(history.BROWSER_EXCLUDED_PREFIXES, (
+            'mobile/', 'build/clang-plugin/', 'build/pgo/', 'docs/', 'python/', 'taskcluster/', 'third_party/node/',
+            'third_party/python/', 'tools/@types/', 'tools/lint/', 'tools/tryselect/'))
+        self.assertEqual(history.default_meta()['browser_excluded_prefixes'], list(history.BROWSER_EXCLUDED_PREFIXES))
+        self.assertTrue(all(p.endswith('/') for p in history.BROWSER_EXCLUDED_PREFIXES))
+        for path, _, _, excluded in TOOLING:
+            with self.subTest(path=path):
+                self.assertFalse(history.is_test(path))
+                self.assertIs(path.startswith(history.BROWSER_EXCLUDED_PREFIXES), excluded)
+
+    def test_counts(self):
+        r = os.path.join(self.mkdtemp(), 'tooling')
+        os.makedirs(r)
+        git(r, 'init', '-q')
+        for path, n, _, _ in TOOLING:
+            write(r, path, body(n))
+        write(r, 'tools/lint/test/t.py', body(50))   # a test path under a tooling prefix: in "all" only, once
+        git(r, 'add', '-A')
+        git(r, 'commit', '-q', '-m', 'tooling', date='2026-09-24T10:00:00Z')
+        got = history.count_release(r, 'HEAD')
+        files = [(p, n, k, False) for p, n, k, _ in TOOLING] + [('tools/lint/test/t.py', 50, 'py', True)]
+        self.assertEqual((got['all'], got['browser']), expected(files))
+        allc = dict.fromkeys(history.KEYS, 0)
+        browser = dict.fromkeys(history.KEYS, 0)
+        for path, n, lang, excluded in TOOLING:
+            allc[lang] += n
+            browser[lang] += 0 if excluded else n
+        allc['py'] += 50
+        self.assertEqual(got['all'], allc)          # every tooling file is in "all"
+        self.assertEqual(got['browser'], browser)
+        self.assertEqual(got['browser']['rust'], 4 + 5)             # build/rust and third_party/rust only
+        self.assertEqual(got['browser']['cpp'], 10 + 2 + 2 + 3 + 3)  # profiler, fuzzing, performance, elfhack, js/src
+        self.assertEqual(got['browser']['ts'], 2)                   # tools/@types left out, PKI.js kept
+        # with the v3 prefixes everything but the test file is browser code: the prefixes change "browser" only
+        v3 = history.count_release(r, 'HEAD', ('mobile/',))
+        self.assertEqual(v3['all'], got['all'])
+        self.assertEqual(sum(v3['browser'].values()), sum(n for _, n, _, _ in TOOLING))
+
+
 class HeadCliTest(GitTestCase):
     def head(self, *flags):
         out = os.path.join(self.mkdtemp(), 'head.json')
@@ -366,7 +443,9 @@ class HeadCliTest(GitTestCase):
 class BackfillTest(GitTestCase):
     def test_file_shape(self):
         lines = self.full_bytes.decode().split('\n')
-        self.assertEqual(lines[0], '{"method_version":3,"browser_excluded_prefixes":["mobile/"],'
+        self.assertEqual(lines[0], '{"method_version":4,"browser_excluded_prefixes":["mobile/","build/clang-plugin/",'
+                                   '"build/pgo/","docs/","python/","taskcluster/","third_party/node/",'
+                                   '"third_party/python/","tools/@types/","tools/lint/","tools/tryselect/"],'
                                    '"header_split":{"c":0.185,"cpp":0.815},"releases":[')
         self.assertEqual(lines[-2:], [']}', ''])
         recs = [json.loads(line.rstrip(',')) for line in lines[1:-2]]
@@ -489,7 +568,9 @@ class AppendTest(GitTestCase):
               for r in recs[:1]]
         cases = [('v1', history.format_history(v1, old)),
                  ('v2', history.format_history(dict(meta, method_version=2), v2)),
-                 ('v4', history.format_history(dict(meta, method_version=4), recs[:1])),
+                 ('v3', history.format_history(dict(meta, method_version=3, browser_excluded_prefixes=['mobile/']),
+                                               recs[:1])),
+                 ('v5', history.format_history(dict(meta, method_version=5), recs[:1])),
                  ('none', history.format_history({k: v for k, v in meta.items() if k != 'method_version'}, recs[:1]))]
         for name, text in cases:
             path = os.path.join(self.mkdtemp(), 'history.json')
@@ -614,7 +695,8 @@ class BuildSiteTest(GitTestCase):
         self.assertEqual(data['releases'], hist['releases'])
         for k in ('method_version', 'browser_excluded_prefixes', 'header_split'):
             self.assertEqual(data[k], hist[k])
-        self.assertEqual((data['method_version'], data['browser_excluded_prefixes']), (3, ['mobile/']))
+        self.assertEqual((data['method_version'], data['browser_excluded_prefixes']),
+                         (4, list(history.BROWSER_EXCLUDED_PREFIXES)))
         head = data['head']
         self.assertEqual(list(head), ['sha', 'date', 'all', 'browser'])
         self.assertEqual(list(head['all']), ['rust', 'c', 'cpp', 'h', 'js', 'ts', 'html', 'py', 'java', 'kt', 'asm'])

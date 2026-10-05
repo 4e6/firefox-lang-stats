@@ -1,0 +1,2891 @@
+{
+ "missing": 0,
+ "res": {
+  "FIREFOX_46_0_RELEASE": {
+   "all": {
+    "Python": 553615,
+    "C++": 6478988,
+    "HTML": 2377459,
+    "JavaScript": 3868987,
+    "C": 3095082,
+    "Java": 388669,
+    "Rust": 2862,
+    "Assembly": 128603,
+    "total": 16894265,
+    "rust_pct": 0.02
+   },
+   "nontest": {
+    "Python": 248233,
+    "C++": 5998993,
+    "HTML": 186994,
+    "JavaScript": 1232139,
+    "C": 2932227,
+    "Java": 342281,
+    "Assembly": 128593,
+    "Rust": 2856,
+    "total": 11072316,
+    "rust_pct": 0.03
+   }
+  },
+  "FIREFOX_47_0_RELEASE": {
+   "all": {
+    "Python": 556409,
+    "C++": 6544528,
+    "HTML": 2404684,
+    "JavaScript": 3859191,
+    "C": 3165775,
+    "Java": 390790,
+    "Rust": 3155,
+    "Assembly": 128738,
+    "total": 17053270,
+    "rust_pct": 0.02
+   },
+   "nontest": {
+    "Python": 250450,
+    "C++": 6057653,
+    "HTML": 187168,
+    "JavaScript": 1172636,
+    "C": 3002777,
+    "Java": 343491,
+    "Assembly": 128728,
+    "Rust": 2748,
+    "total": 11145651,
+    "rust_pct": 0.02
+   }
+  },
+  "FIREFOX_48_0_RELEASE": {
+   "all": {
+    "Python": 616690,
+    "C++": 6599580,
+    "HTML": 2429902,
+    "JavaScript": 3879024,
+    "C": 3146914,
+    "Java": 366182,
+    "Rust": 3161,
+    "Assembly": 128738,
+    "total": 17170191,
+    "rust_pct": 0.02
+   },
+   "nontest": {
+    "Python": 254340,
+    "C++": 6102959,
+    "HTML": 164190,
+    "JavaScript": 1149660,
+    "C": 2986763,
+    "Java": 317042,
+    "Assembly": 128728,
+    "Rust": 2754,
+    "total": 11106436,
+    "rust_pct": 0.02
+   }
+  },
+  "FIREFOX_49_0_RELEASE": {
+   "all": {
+    "Python": 635051,
+    "C++": 6666492,
+    "HTML": 2618801,
+    "JavaScript": 3785905,
+    "C": 3165411,
+    "Java": 372611,
+    "Rust": 3161,
+    "Assembly": 128738,
+    "total": 17376170,
+    "rust_pct": 0.02
+   },
+   "nontest": {
+    "Python": 265612,
+    "C++": 6162060,
+    "HTML": 167705,
+    "JavaScript": 1069077,
+    "C": 3005068,
+    "Java": 321936,
+    "Assembly": 128728,
+    "Rust": 2754,
+    "total": 11122940,
+    "rust_pct": 0.02
+   }
+  },
+  "FIREFOX_50_0_RELEASE": {
+   "all": {
+    "Python": 648932,
+    "C++": 6800433,
+    "HTML": 2740653,
+    "JavaScript": 4001398,
+    "C": 3185202,
+    "Java": 375603,
+    "Rust": 3889,
+    "Assembly": 128197,
+    "total": 17884307,
+    "rust_pct": 0.02
+   },
+   "nontest": {
+    "Python": 272862,
+    "C++": 6273127,
+    "HTML": 167359,
+    "JavaScript": 1078288,
+    "C": 3024562,
+    "Java": 324634,
+    "Assembly": 128187,
+    "Rust": 3222,
+    "total": 11272241,
+    "rust_pct": 0.03
+   }
+  },
+  "FIREFOX_51_0_RELEASE": {
+   "all": {
+    "Python": 690191,
+    "C++": 6859603,
+    "HTML": 2822623,
+    "JavaScript": 4100536,
+    "C": 3194432,
+    "Java": 378744,
+    "Rust": 4883,
+    "Assembly": 126989,
+    "total": 18178001,
+    "rust_pct": 0.03
+   },
+   "nontest": {
+    "Python": 303702,
+    "C++": 6321305,
+    "HTML": 167097,
+    "JavaScript": 1151585,
+    "C": 3034541,
+    "Java": 323171,
+    "Assembly": 126952,
+    "Rust": 3862,
+    "total": 11432215,
+    "rust_pct": 0.03
+   }
+  },
+  "FIREFOX_52_0_RELEASE": {
+   "all": {
+    "JavaScript": 4127667,
+    "Python": 688268,
+    "C++": 6796681,
+    "HTML": 2915109,
+    "C": 3205151,
+    "Java": 382397,
+    "Rust": 67600,
+    "Assembly": 129497,
+    "total": 18312370,
+    "rust_pct": 0.37
+   },
+   "nontest": {
+    "JavaScript": 1171497,
+    "Python": 306596,
+    "C++": 6255504,
+    "HTML": 169565,
+    "C": 3042157,
+    "Java": 325120,
+    "Assembly": 129460,
+    "Rust": 65157,
+    "total": 11465056,
+    "rust_pct": 0.57
+   }
+  },
+  "FIREFOX_53_0_RELEASE": {
+   "all": {
+    "JavaScript": 4207705,
+    "Python": 709443,
+    "C++": 7001776,
+    "HTML": 3025717,
+    "C": 3280223,
+    "Java": 379536,
+    "Rust": 70437,
+    "Assembly": 117359,
+    "total": 18792196,
+    "rust_pct": 0.37
+   },
+   "nontest": {
+    "JavaScript": 1161254,
+    "Python": 322430,
+    "C++": 6424954,
+    "HTML": 172285,
+    "C": 3109454,
+    "Java": 321395,
+    "Assembly": 117322,
+    "Rust": 67654,
+    "total": 11696748,
+    "rust_pct": 0.58
+   }
+  },
+  "FIREFOX_54_0_RELEASE": {
+   "all": {
+    "JavaScript": 5280627,
+    "Python": 754336,
+    "C++": 7015142,
+    "HTML": 3101244,
+    "C": 3274023,
+    "Java": 382778,
+    "Rust": 815996,
+    "Assembly": 117359,
+    "total": 20741505,
+    "rust_pct": 3.93
+   },
+   "nontest": {
+    "JavaScript": 1268088,
+    "Python": 354811,
+    "C++": 6474469,
+    "HTML": 175394,
+    "C": 3121140,
+    "Java": 323903,
+    "Assembly": 117322,
+    "Rust": 785871,
+    "total": 12620998,
+    "rust_pct": 6.23
+   }
+  },
+  "FIREFOX_55_0_RELEASE": {
+   "all": {
+    "JavaScript": 5643116,
+    "Python": 740955,
+    "C++": 7225736,
+    "C": 3558562,
+    "HTML": 3230431,
+    "Java": 488118,
+    "Rust": 940862,
+    "Assembly": 142735,
+    "total": 21970515,
+    "rust_pct": 4.28
+   },
+   "nontest": {
+    "JavaScript": 1267893,
+    "Python": 355254,
+    "C++": 6671611,
+    "C": 3413982,
+    "HTML": 168375,
+    "Java": 425493,
+    "Assembly": 142698,
+    "Rust": 899844,
+    "total": 13345150,
+    "rust_pct": 6.74
+   }
+  },
+  "FIREFOX_56_0_RELEASE": {
+   "all": {
+    "JavaScript": 5737578,
+    "Python": 758479,
+    "C++": 7627800,
+    "C": 3537159,
+    "HTML": 4497424,
+    "Java": 506141,
+    "Rust": 1024084,
+    "Assembly": 142720,
+    "total": 23831385,
+    "rust_pct": 4.3
+   },
+   "nontest": {
+    "JavaScript": 1283868,
+    "Python": 365906,
+    "C++": 7074334,
+    "C": 3393681,
+    "HTML": 171216,
+    "Java": 444360,
+    "Assembly": 142683,
+    "Rust": 980362,
+    "total": 13856410,
+    "rust_pct": 7.08
+   }
+  },
+  "FIREFOX_57_0_RELEASE": {
+   "all": {
+    "JavaScript": 5878228,
+    "Python": 774039,
+    "C++": 7655175,
+    "C": 3543039,
+    "HTML": 4545836,
+    "Java": 512781,
+    "Rust": 1192874,
+    "Assembly": 143041,
+    "total": 24245013,
+    "rust_pct": 4.92
+   },
+   "nontest": {
+    "JavaScript": 1490772,
+    "Python": 369541,
+    "C++": 7094166,
+    "C": 3397965,
+    "HTML": 181206,
+    "Java": 449746,
+    "Rust": 1140618,
+    "Assembly": 143004,
+    "total": 14267018,
+    "rust_pct": 7.99
+   }
+  },
+  "FIREFOX_58_0_RELEASE": {
+   "all": {
+    "JavaScript": 5946574,
+    "Python": 786814,
+    "C++": 7841003,
+    "C": 3580809,
+    "HTML": 4389418,
+    "Java": 511203,
+    "Rust": 1095382,
+    "Assembly": 139143,
+    "total": 24290346,
+    "rust_pct": 4.51
+   },
+   "nontest": {
+    "JavaScript": 1289317,
+    "Python": 375739,
+    "C++": 7242872,
+    "C": 3434029,
+    "HTML": 176842,
+    "Java": 449174,
+    "Rust": 1042628,
+    "Assembly": 138724,
+    "total": 14149325,
+    "rust_pct": 7.37
+   }
+  },
+  "FIREFOX_59_0_RELEASE": {
+   "all": {
+    "JavaScript": 5919967,
+    "Python": 833543,
+    "C++": 7840869,
+    "C": 3589748,
+    "HTML": 4347167,
+    "Java": 510469,
+    "Rust": 1050544,
+    "Assembly": 139143,
+    "total": 24231450,
+    "rust_pct": 4.34
+   },
+   "nontest": {
+    "JavaScript": 1301385,
+    "Python": 393698,
+    "C++": 7233236,
+    "C": 3436007,
+    "HTML": 170621,
+    "Java": 448774,
+    "Rust": 998014,
+    "Assembly": 138724,
+    "total": 14120459,
+    "rust_pct": 7.07
+   }
+  },
+  "FIREFOX_60_0_RELEASE": {
+   "all": {
+    "JavaScript": 5950678,
+    "Python": 866409,
+    "C++": 8015092,
+    "C": 3654586,
+    "HTML": 4299603,
+    "Java": 514451,
+    "Rust": 1277469,
+    "Assembly": 139937,
+    "total": 24718225,
+    "rust_pct": 5.17
+   },
+   "nontest": {
+    "JavaScript": 1256490,
+    "Python": 414024,
+    "C++": 7449679,
+    "C": 3500279,
+    "HTML": 169418,
+    "Java": 450240,
+    "Rust": 1217334,
+    "Assembly": 139518,
+    "total": 14596982,
+    "rust_pct": 8.34
+   }
+  },
+  "FIREFOX_61_0_RELEASE": {
+   "all": {
+    "JavaScript": 6152930,
+    "Python": 1157426,
+    "C++": 7980070,
+    "C": 3627321,
+    "HTML": 4410620,
+    "Java": 516949,
+    "Rust": 1427379,
+    "Assembly": 140187,
+    "total": 25412882,
+    "rust_pct": 5.62
+   },
+   "nontest": {
+    "JavaScript": 1235654,
+    "Python": 696969,
+    "C++": 7408102,
+    "C": 3473001,
+    "HTML": 168527,
+    "Java": 451946,
+    "Rust": 1346880,
+    "Assembly": 139772,
+    "total": 14920851,
+    "rust_pct": 9.03
+   }
+  },
+  "FIREFOX_62_0_RELEASE": {
+   "all": {
+    "JavaScript": 6199027,
+    "Python": 1160139,
+    "C++": 8004284,
+    "C": 3622850,
+    "HTML": 4366749,
+    "Rust": 1333667,
+    "Assembly": 140187,
+    "Java": 520872,
+    "total": 25347775,
+    "rust_pct": 5.26
+   },
+   "nontest": {
+    "JavaScript": 1254911,
+    "Python": 671974,
+    "C++": 7426239,
+    "C": 3468362,
+    "HTML": 169178,
+    "Rust": 1254691,
+    "Assembly": 139772,
+    "Java": 454051,
+    "total": 14839178,
+    "rust_pct": 8.46
+   }
+  },
+  "FIREFOX_63_0_RELEASE": {
+   "all": {
+    "JavaScript": 6305882,
+    "Python": 1254982,
+    "C++": 7944284,
+    "C": 3608748,
+    "HTML": 4422610,
+    "Rust": 1425703,
+    "Assembly": 122312,
+    "Java": 530509,
+    "total": 25615030,
+    "rust_pct": 5.57
+   },
+   "nontest": {
+    "JavaScript": 1285261,
+    "Python": 681581,
+    "C++": 7355526,
+    "C": 3452278,
+    "HTML": 174012,
+    "Rust": 1336732,
+    "Assembly": 121897,
+    "Java": 463414,
+    "total": 14870701,
+    "rust_pct": 8.99
+   }
+  },
+  "FIREFOX_64_0_RELEASE": {
+   "all": {
+    "JavaScript": 6628874,
+    "Python": 1341110,
+    "C++": 8018748,
+    "C": 3667227,
+    "HTML": 4470197,
+    "Rust": 1615216,
+    "Assembly": 132999,
+    "Java": 531327,
+    "total": 26405698,
+    "rust_pct": 6.12
+   },
+   "nontest": {
+    "JavaScript": 1288050,
+    "Python": 742145,
+    "C++": 7419457,
+    "C": 3510518,
+    "HTML": 173180,
+    "Rust": 1522672,
+    "Assembly": 132584,
+    "Java": 464007,
+    "total": 15252613,
+    "rust_pct": 9.98
+   }
+  },
+  "FIREFOX_65_0_RELEASE": {
+   "all": {
+    "JavaScript": 6706615,
+    "Python": 1353931,
+    "C++": 7456890,
+    "C": 3743666,
+    "HTML": 4516961,
+    "Rust": 1747783,
+    "Assembly": 150497,
+    "Java": 541723,
+    "total": 26218066,
+    "rust_pct": 6.67
+   },
+   "nontest": {
+    "JavaScript": 1301338,
+    "Python": 740141,
+    "C++": 6872049,
+    "C": 3586111,
+    "HTML": 171389,
+    "Rust": 1653333,
+    "Assembly": 149870,
+    "Java": 473624,
+    "total": 14947855,
+    "rust_pct": 11.06
+   }
+  },
+  "FIREFOX_66_0_RELEASE": {
+   "all": {
+    "JavaScript": 6815352,
+    "Python": 1356748,
+    "C++": 7480873,
+    "C": 3751421,
+    "HTML": 4555487,
+    "Rust": 1766567,
+    "Assembly": 156548,
+    "Java": 543057,
+    "total": 26426053,
+    "rust_pct": 6.68
+   },
+   "nontest": {
+    "JavaScript": 1335785,
+    "Python": 740662,
+    "C++": 6895587,
+    "C": 3591580,
+    "HTML": 180332,
+    "Rust": 1670064,
+    "Assembly": 155921,
+    "Java": 474824,
+    "total": 15044755,
+    "rust_pct": 11.1
+   }
+  },
+  "FIREFOX_67_0_RELEASE": {
+   "all": {
+    "JavaScript": 6869880,
+    "Python": 1362915,
+    "C++": 7506830,
+    "C": 3758483,
+    "HTML": 4584187,
+    "Rust": 1796629,
+    "Assembly": 165964,
+    "Java": 545867,
+    "total": 26590755,
+    "rust_pct": 6.76
+   },
+   "nontest": {
+    "JavaScript": 1387249,
+    "Python": 745493,
+    "C++": 6914482,
+    "C": 3597688,
+    "HTML": 181609,
+    "Rust": 1697550,
+    "Assembly": 165337,
+    "Java": 477589,
+    "total": 15166997,
+    "rust_pct": 11.19
+   }
+  },
+  "FIREFOX_68_0_RELEASE": {
+   "all": {
+    "JavaScript": 6948197,
+    "Python": 1372208,
+    "C++": 7560815,
+    "C": 3775449,
+    "HTML": 4618839,
+    "Rust": 1855128,
+    "Assembly": 171046,
+    "Java": 549506,
+    "total": 26851188,
+    "rust_pct": 6.91
+   },
+   "nontest": {
+    "JavaScript": 1409640,
+    "Python": 750558,
+    "C++": 6965783,
+    "C": 3614313,
+    "HTML": 177501,
+    "Rust": 1747381,
+    "Assembly": 170419,
+    "Java": 481208,
+    "total": 15316803,
+    "rust_pct": 11.41
+   }
+  },
+  "FIREFOX_69_0_RELEASE": {
+   "all": {
+    "JavaScript": 7482088,
+    "Python": 1377258,
+    "C++": 7630307,
+    "C": 3807460,
+    "HTML": 4724964,
+    "Rust": 1778749,
+    "Assembly": 171196,
+    "Java": 550319,
+    "total": 27522341,
+    "rust_pct": 6.46
+   },
+   "nontest": {
+    "JavaScript": 1509761,
+    "Python": 750753,
+    "C++": 7031406,
+    "C": 3645925,
+    "HTML": 235866,
+    "Rust": 1668342,
+    "Assembly": 170569,
+    "Java": 482025,
+    "total": 15494647,
+    "rust_pct": 10.77
+   }
+  },
+  "FIREFOX_70_0_RELEASE": {
+   "all": {
+    "JavaScript": 7676081,
+    "Python": 1371394,
+    "C++": 7664782,
+    "C": 3834838,
+    "HTML": 4805078,
+    "Rust": 1862766,
+    "Assembly": 171184,
+    "Java": 551092,
+    "total": 27937215,
+    "rust_pct": 6.67
+   },
+   "nontest": {
+    "JavaScript": 1596791,
+    "Python": 738963,
+    "C++": 7060489,
+    "C": 3673031,
+    "HTML": 235790,
+    "Rust": 1750436,
+    "Assembly": 170557,
+    "Java": 484044,
+    "total": 15710101,
+    "rust_pct": 11.14
+   }
+  },
+  "FIREFOX_71_0_RELEASE": {
+   "all": {
+    "JavaScript": 7715803,
+    "Python": 1374294,
+    "C++": 7679854,
+    "C": 3840038,
+    "HTML": 4879847,
+    "Rust": 1913449,
+    "Assembly": 178209,
+    "Java": 161770,
+    "total": 27743264,
+    "rust_pct": 6.9
+   },
+   "nontest": {
+    "JavaScript": 1593982,
+    "Python": 738651,
+    "C++": 7071662,
+    "C": 3674903,
+    "HTML": 234745,
+    "Rust": 1794606,
+    "Assembly": 177582,
+    "Java": 155704,
+    "total": 15441835,
+    "rust_pct": 11.62
+   }
+  },
+  "FIREFOX_72_0_RELEASE": {
+   "all": {
+    "JavaScript": 7728954,
+    "Python": 1391801,
+    "C++": 7790822,
+    "C": 3782633,
+    "HTML": 4981764,
+    "Rust": 2207874,
+    "Assembly": 180066,
+    "Java": 164611,
+    "total": 28228525,
+    "rust_pct": 7.82
+   },
+   "nontest": {
+    "JavaScript": 1569557,
+    "Python": 749346,
+    "C++": 7181023,
+    "C": 3616851,
+    "HTML": 242274,
+    "Rust": 2069231,
+    "Assembly": 179439,
+    "Java": 158536,
+    "total": 15766257,
+    "rust_pct": 13.12
+   }
+  },
+  "FIREFOX_73_0_RELEASE": {
+   "all": {
+    "JavaScript": 7716646,
+    "Python": 1401063,
+    "C++": 7822593,
+    "C": 3778198,
+    "HTML": 5009382,
+    "Rust": 2219653,
+    "Assembly": 180066,
+    "Java": 166344,
+    "total": 28293945,
+    "rust_pct": 7.84
+   },
+   "nontest": {
+    "JavaScript": 1571228,
+    "Python": 753251,
+    "C++": 7211426,
+    "C": 3612350,
+    "HTML": 246008,
+    "Rust": 2065657,
+    "Assembly": 179439,
+    "Java": 160040,
+    "total": 15799399,
+    "rust_pct": 13.07
+   }
+  },
+  "FIREFOX_74_0_RELEASE": {
+   "all": {
+    "JavaScript": 7743142,
+    "Python": 1400529,
+    "C++": 7863909,
+    "C": 3786582,
+    "HTML": 5178726,
+    "Rust": 2235501,
+    "Assembly": 179884,
+    "Java": 167189,
+    "total": 28555462,
+    "rust_pct": 7.83
+   },
+   "nontest": {
+    "JavaScript": 1571603,
+    "Python": 752716,
+    "C++": 7230516,
+    "C": 3610906,
+    "HTML": 246166,
+    "Rust": 2079402,
+    "Assembly": 179257,
+    "Java": 160769,
+    "total": 15831335,
+    "rust_pct": 13.13
+   }
+  },
+  "FIREFOX_75_0_RELEASE": {
+   "all": {
+    "JavaScript": 7754781,
+    "Python": 1432817,
+    "C++": 7894909,
+    "C": 3829311,
+    "HTML": 5083975,
+    "Rust": 2299368,
+    "Java": 173780,
+    "Assembly": 182849,
+    "total": 28651790,
+    "rust_pct": 8.03
+   },
+   "nontest": {
+    "JavaScript": 1570709,
+    "Python": 794217,
+    "C++": 7230171,
+    "C": 3640523,
+    "HTML": 246976,
+    "Rust": 2140340,
+    "Java": 167207,
+    "Assembly": 182222,
+    "total": 15972365,
+    "rust_pct": 13.4
+   }
+  },
+  "FIREFOX_76_0_RELEASE": {
+   "all": {
+    "JavaScript": 7835456,
+    "Python": 1445543,
+    "C++": 7926019,
+    "C": 3833865,
+    "HTML": 4940614,
+    "Rust": 2371967,
+    "Java": 172224,
+    "Assembly": 189056,
+    "total": 28714744,
+    "rust_pct": 8.26
+   },
+   "nontest": {
+    "JavaScript": 1581027,
+    "Python": 800216,
+    "C++": 7258795,
+    "C": 3644786,
+    "HTML": 245629,
+    "Rust": 2204628,
+    "Java": 165953,
+    "Assembly": 188416,
+    "total": 16089450,
+    "rust_pct": 13.7
+   }
+  },
+  "FIREFOX_77_0_RELEASE": {
+   "all": {
+    "JavaScript": 7865439,
+    "Python": 1499749,
+    "C++": 8201021,
+    "C": 4183178,
+    "HTML": 4988019,
+    "Rust": 2576524,
+    "Java": 172331,
+    "Assembly": 189056,
+    "total": 29675317,
+    "rust_pct": 8.68
+   },
+   "nontest": {
+    "JavaScript": 1587376,
+    "Python": 826445,
+    "C++": 7402524,
+    "C": 3929360,
+    "HTML": 245446,
+    "Rust": 2378357,
+    "Java": 166046,
+    "Assembly": 188416,
+    "total": 16723970,
+    "rust_pct": 14.22
+   }
+  },
+  "FIREFOX_78_0_RELEASE": {
+   "all": {
+    "JavaScript": 8185693,
+    "Python": 1560323,
+    "C++": 8232693,
+    "C": 4180412,
+    "HTML": 5009655,
+    "Rust": 2640668,
+    "Java": 173524,
+    "Assembly": 189056,
+    "total": 30172024,
+    "rust_pct": 8.75
+   },
+   "nontest": {
+    "JavaScript": 1602272,
+    "Python": 865398,
+    "C++": 7430516,
+    "C": 3926599,
+    "HTML": 246091,
+    "Rust": 2437023,
+    "Java": 167203,
+    "Assembly": 188416,
+    "total": 16863518,
+    "rust_pct": 14.45
+   }
+  },
+  "FIREFOX_79_0_RELEASE": {
+   "all": {
+    "JavaScript": 8250001,
+    "Python": 1510283,
+    "C++": 8218851,
+    "C": 4180170,
+    "HTML": 5054361,
+    "Rust": 2663933,
+    "Java": 243665,
+    "Assembly": 192616,
+    "total": 30313880,
+    "rust_pct": 8.79
+   },
+   "nontest": {
+    "JavaScript": 1609739,
+    "Python": 858884,
+    "C++": 7411630,
+    "C": 3926151,
+    "HTML": 240278,
+    "Rust": 2457167,
+    "Java": 237344,
+    "Assembly": 191915,
+    "total": 16933108,
+    "rust_pct": 14.51
+   }
+  },
+  "FIREFOX_80_0_RELEASE": {
+   "all": {
+    "JavaScript": 8287274,
+    "Python": 1558505,
+    "C++": 8270997,
+    "C": 4227248,
+    "HTML": 5074483,
+    "Rust": 2779728,
+    "Java": 244060,
+    "Assembly": 192616,
+    "total": 30634911,
+    "rust_pct": 9.07
+   },
+   "nontest": {
+    "JavaScript": 1618054,
+    "Python": 905726,
+    "C++": 7440300,
+    "C": 3962429,
+    "HTML": 241290,
+    "Rust": 2571238,
+    "Java": 237711,
+    "Assembly": 191915,
+    "total": 17168663,
+    "rust_pct": 14.98
+   }
+  },
+  "FIREFOX_81_0_RELEASE": {
+   "all": {
+    "JavaScript": 8324810,
+    "Python": 1569544,
+    "C++": 8309056,
+    "C": 4246169,
+    "HTML": 5089438,
+    "Rust": 2849228,
+    "Java": 244803,
+    "Assembly": 192802,
+    "total": 30825850,
+    "rust_pct": 9.24
+   },
+   "nontest": {
+    "JavaScript": 1630766,
+    "Python": 911095,
+    "C++": 7474227,
+    "C": 3980210,
+    "HTML": 242311,
+    "Rust": 2625677,
+    "Java": 238430,
+    "Assembly": 192101,
+    "total": 17294817,
+    "rust_pct": 15.18
+   }
+  },
+  "FIREFOX_82_0_RELEASE": {
+   "all": {
+    "JavaScript": 8330028,
+    "Python": 1252144,
+    "C++": 8330712,
+    "C": 4250226,
+    "HTML": 5094243,
+    "Rust": 2873640,
+    "Java": 245125,
+    "Assembly": 194160,
+    "total": 30570278,
+    "rust_pct": 9.4
+   },
+   "nontest": {
+    "JavaScript": 1634741,
+    "Python": 598487,
+    "C++": 7493111,
+    "C": 3984123,
+    "HTML": 241183,
+    "Rust": 2645796,
+    "Java": 238769,
+    "Assembly": 193458,
+    "total": 17029668,
+    "rust_pct": 15.54
+   }
+  },
+  "FIREFOX_83_0_RELEASE": {
+   "all": {
+    "JavaScript": 8352664,
+    "Python": 1289767,
+    "C++": 8342895,
+    "C": 4247520,
+    "HTML": 5027222,
+    "Rust": 2911984,
+    "Java": 246565,
+    "Assembly": 193998,
+    "total": 30612615,
+    "rust_pct": 9.51
+   },
+   "nontest": {
+    "JavaScript": 1618660,
+    "Python": 633720,
+    "C++": 7504137,
+    "C": 3986088,
+    "HTML": 245275,
+    "Rust": 2676523,
+    "Java": 240179,
+    "Assembly": 193296,
+    "total": 17097878,
+    "rust_pct": 15.65
+   }
+  },
+  "FIREFOX_84_0_RELEASE": {
+   "all": {
+    "JavaScript": 8453638,
+    "Python": 1330073,
+    "C++": 8393022,
+    "C": 4266051,
+    "HTML": 5054381,
+    "Rust": 3007858,
+    "Java": 246656,
+    "Assembly": 194052,
+    "total": 30945731,
+    "rust_pct": 9.72
+   },
+   "nontest": {
+    "JavaScript": 1620501,
+    "Python": 653158,
+    "C++": 7536279,
+    "C": 3997359,
+    "HTML": 245661,
+    "Rust": 2760969,
+    "Java": 240267,
+    "Assembly": 193296,
+    "total": 17247490,
+    "rust_pct": 16.01
+   }
+  },
+  "FIREFOX_85_0_RELEASE": {
+   "all": {
+    "JavaScript": 8466171,
+    "Python": 1285205,
+    "C++": 8366640,
+    "C": 4252835,
+    "HTML": 5074562,
+    "Rust": 3001271,
+    "Java": 246944,
+    "Assembly": 194052,
+    "total": 30887680,
+    "rust_pct": 9.72
+   },
+   "nontest": {
+    "JavaScript": 1626083,
+    "Python": 629662,
+    "C++": 7505494,
+    "C": 3984056,
+    "HTML": 245310,
+    "Rust": 2752626,
+    "Java": 240541,
+    "Assembly": 193296,
+    "total": 17177068,
+    "rust_pct": 16.03
+   }
+  },
+  "FIREFOX_86_0_RELEASE": {
+   "all": {
+    "JavaScript": 8510455,
+    "Python": 1315678,
+    "C++": 8372785,
+    "C": 4255437,
+    "HTML": 5085381,
+    "Rust": 3041592,
+    "Java": 247004,
+    "Assembly": 194052,
+    "total": 31022384,
+    "rust_pct": 9.8
+   },
+   "nontest": {
+    "JavaScript": 1632604,
+    "Python": 632547,
+    "C++": 7513384,
+    "C": 3987952,
+    "HTML": 240704,
+    "Rust": 2787717,
+    "Java": 240570,
+    "Assembly": 193296,
+    "total": 17228774,
+    "rust_pct": 16.18
+   }
+  },
+  "FIREFOX_87_0_RELEASE": {
+   "all": {
+    "JavaScript": 8533893,
+    "Python": 1306950,
+    "C++": 8489982,
+    "C": 4276160,
+    "HTML": 5104695,
+    "Rust": 3048485,
+    "Java": 247124,
+    "Assembly": 194907,
+    "total": 31202196,
+    "rust_pct": 9.77
+   },
+   "nontest": {
+    "JavaScript": 1631579,
+    "Python": 629715,
+    "C++": 7627489,
+    "C": 3999336,
+    "HTML": 241262,
+    "Rust": 2790301,
+    "Java": 240484,
+    "Assembly": 194151,
+    "total": 17354317,
+    "rust_pct": 16.08
+   }
+  },
+  "FIREFOX_88_0_RELEASE": {
+   "all": {
+    "JavaScript": 8528164,
+    "Python": 1340967,
+    "C++": 8491330,
+    "C": 4249228,
+    "HTML": 5145979,
+    "Rust": 3076028,
+    "Java": 246562,
+    "Assembly": 193796,
+    "total": 31272054,
+    "rust_pct": 9.84
+   },
+   "nontest": {
+    "JavaScript": 1611117,
+    "Python": 631040,
+    "C++": 7627777,
+    "C": 3973845,
+    "HTML": 241936,
+    "Rust": 2806411,
+    "Java": 239800,
+    "Assembly": 193040,
+    "total": 17324966,
+    "rust_pct": 16.2
+   }
+  },
+  "FIREFOX_89_0_RELEASE": {
+   "all": {
+    "JavaScript": 8238428,
+    "Python": 1342188,
+    "C++": 8462961,
+    "C": 4251038,
+    "HTML": 5160172,
+    "Rust": 3085224,
+    "Java": 244169,
+    "Assembly": 193796,
+    "total": 30977976,
+    "rust_pct": 9.96
+   },
+   "nontest": {
+    "JavaScript": 1626001,
+    "Python": 633499,
+    "C++": 7601301,
+    "C": 3975774,
+    "HTML": 243051,
+    "Rust": 2818679,
+    "Java": 238065,
+    "Assembly": 193040,
+    "total": 17329410,
+    "rust_pct": 16.27
+   }
+  },
+  "FIREFOX_90_0_RELEASE": {
+   "all": {
+    "JavaScript": 8743475,
+    "Python": 1383609,
+    "C++": 8598200,
+    "C": 4334264,
+    "HTML": 5177827,
+    "Rust": 3002713,
+    "Java": 242309,
+    "Assembly": 215143,
+    "total": 31697540,
+    "rust_pct": 9.47
+   },
+   "nontest": {
+    "JavaScript": 1681564,
+    "Python": 675095,
+    "C++": 7714002,
+    "C": 4051364,
+    "HTML": 243627,
+    "Rust": 2727289,
+    "Java": 236197,
+    "Assembly": 214387,
+    "total": 17543525,
+    "rust_pct": 15.55
+   }
+  },
+  "FIREFOX_91_0_RELEASE": {
+   "all": {
+    "JavaScript": 8987064,
+    "Python": 1290865,
+    "C++": 8593119,
+    "C": 4318190,
+    "HTML": 5182980,
+    "Rust": 3040949,
+    "Java": 242412,
+    "Assembly": 221478,
+    "total": 31877057,
+    "rust_pct": 9.54
+   },
+   "nontest": {
+    "JavaScript": 1704748,
+    "Python": 654574,
+    "C++": 7712631,
+    "C": 4036032,
+    "HTML": 234290,
+    "Rust": 2754319,
+    "Java": 236306,
+    "Assembly": 220722,
+    "total": 17553622,
+    "rust_pct": 15.69
+   }
+  },
+  "FIREFOX_92_0_RELEASE": {
+   "all": {
+    "JavaScript": 9021103,
+    "Python": 1293549,
+    "C++": 8648156,
+    "C": 4332331,
+    "HTML": 5205587,
+    "Rust": 3068610,
+    "Java": 242632,
+    "Assembly": 221478,
+    "total": 32033446,
+    "rust_pct": 9.58
+   },
+   "nontest": {
+    "JavaScript": 1715888,
+    "Python": 656012,
+    "C++": 7766869,
+    "C": 4050093,
+    "HTML": 241863,
+    "Rust": 2778139,
+    "Java": 236510,
+    "Assembly": 220722,
+    "total": 17666096,
+    "rust_pct": 15.73
+   }
+  },
+  "FIREFOX_93_0_RELEASE": {
+   "all": {
+    "JavaScript": 9053235,
+    "Python": 1294451,
+    "C++": 8542969,
+    "C": 4318861,
+    "HTML": 5226017,
+    "Rust": 3067737,
+    "Java": 243365,
+    "Assembly": 221424,
+    "total": 31968059,
+    "rust_pct": 9.6
+   },
+   "nontest": {
+    "JavaScript": 1720434,
+    "Python": 656015,
+    "C++": 7673617,
+    "C": 4044835,
+    "HTML": 241549,
+    "Rust": 2789213,
+    "Java": 237194,
+    "Assembly": 220722,
+    "total": 17583579,
+    "rust_pct": 15.86
+   }
+  },
+  "FIREFOX_94_0_RELEASE": {
+   "all": {
+    "JavaScript": 9099648,
+    "Python": 1283860,
+    "C++": 8574712,
+    "C": 4398061,
+    "HTML": 5231963,
+    "Rust": 3104989,
+    "Java": 243351,
+    "Assembly": 221741,
+    "total": 32158325,
+    "rust_pct": 9.66
+   },
+   "nontest": {
+    "JavaScript": 1753969,
+    "Python": 668452,
+    "C++": 7703432,
+    "C": 4128713,
+    "HTML": 240484,
+    "Rust": 2821763,
+    "Java": 237358,
+    "Assembly": 221326,
+    "total": 17775497,
+    "rust_pct": 15.87
+   }
+  },
+  "FIREFOX_95_0_RELEASE": {
+   "all": {
+    "JavaScript": 9132368,
+    "Python": 1297851,
+    "C++": 8595049,
+    "C": 4403959,
+    "HTML": 5266461,
+    "Rust": 3106817,
+    "Java": 244103,
+    "Assembly": 244659,
+    "total": 32291267,
+    "rust_pct": 9.62
+   },
+   "nontest": {
+    "JavaScript": 1757704,
+    "Python": 680723,
+    "C++": 7720531,
+    "C": 4130622,
+    "HTML": 244575,
+    "Rust": 2823512,
+    "Java": 237377,
+    "Assembly": 243874,
+    "total": 17838918,
+    "rust_pct": 15.83
+   }
+  },
+  "FIREFOX_96_0_RELEASE": {
+   "all": {
+    "JavaScript": 9166277,
+    "Python": 1596007,
+    "C++": 8887343,
+    "C": 4451017,
+    "HTML": 5286343,
+    "Rust": 3096054,
+    "Java": 265948,
+    "Assembly": 244659,
+    "total": 32993648,
+    "rust_pct": 9.38
+   },
+   "nontest": {
+    "JavaScript": 1764208,
+    "Python": 972489,
+    "C++": 8018579,
+    "C": 4178228,
+    "HTML": 244699,
+    "Rust": 2814391,
+    "Java": 257597,
+    "Assembly": 243874,
+    "total": 18494065,
+    "rust_pct": 15.22
+   }
+  },
+  "FIREFOX_97_0_RELEASE": {
+   "all": {
+    "JavaScript": 9161789,
+    "Python": 1599020,
+    "C++": 8930439,
+    "C": 4473968,
+    "HTML": 5328198,
+    "Rust": 3189338,
+    "Java": 265765,
+    "Assembly": 265477,
+    "total": 33213994,
+    "rust_pct": 9.6
+   },
+   "nontest": {
+    "JavaScript": 1764143,
+    "Python": 973950,
+    "C++": 8057823,
+    "C": 4201079,
+    "HTML": 246707,
+    "Rust": 2900495,
+    "Java": 257353,
+    "Assembly": 264692,
+    "total": 18666242,
+    "rust_pct": 15.54
+   }
+  },
+  "FIREFOX_98_0_RELEASE": {
+   "all": {
+    "JavaScript": 9177840,
+    "Python": 1603312,
+    "C++": 8953047,
+    "C": 4479135,
+    "HTML": 5337939,
+    "Rust": 3325381,
+    "Java": 266111,
+    "Assembly": 269289,
+    "total": 33412054,
+    "rust_pct": 9.95
+   },
+   "nontest": {
+    "JavaScript": 1754830,
+    "Python": 975134,
+    "C++": 8074945,
+    "C": 4206166,
+    "HTML": 249586,
+    "Rust": 2899352,
+    "Java": 257694,
+    "Assembly": 268504,
+    "total": 18686211,
+    "rust_pct": 15.52
+   }
+  },
+  "FIREFOX_99_0_RELEASE": {
+   "all": {
+    "JavaScript": 9186531,
+    "Python": 1592733,
+    "C++": 8978178,
+    "C": 4477159,
+    "HTML": 5343567,
+    "Rust": 3323340,
+    "Java": 266235,
+    "Assembly": 275385,
+    "total": 33443128,
+    "rust_pct": 9.94
+   },
+   "nontest": {
+    "JavaScript": 1752688,
+    "Python": 962643,
+    "C++": 8118966,
+    "C": 4214429,
+    "HTML": 247672,
+    "Rust": 2896447,
+    "Java": 257818,
+    "Assembly": 274600,
+    "total": 18725263,
+    "rust_pct": 15.47
+   }
+  },
+  "FIREFOX_100_0_RELEASE": {
+   "all": {
+    "JavaScript": 9152709,
+    "Python": 1581975,
+    "C++": 8990275,
+    "C": 4477589,
+    "HTML": 5368732,
+    "Rust": 3415775,
+    "Java": 266726,
+    "Assembly": 275385,
+    "total": 33529166,
+    "rust_pct": 10.19
+   },
+   "nontest": {
+    "JavaScript": 1706059,
+    "Python": 963069,
+    "C++": 8127414,
+    "C": 4215570,
+    "HTML": 247423,
+    "Rust": 2965824,
+    "Java": 258270,
+    "Assembly": 274600,
+    "total": 18758229,
+    "rust_pct": 15.81
+   }
+  },
+  "FIREFOX_101_0_RELEASE": {
+   "all": {
+    "JavaScript": 9462170,
+    "Python": 1585466,
+    "C++": 9001854,
+    "C": 4477104,
+    "HTML": 5395410,
+    "Rust": 3422723,
+    "Java": 267115,
+    "Assembly": 275680,
+    "total": 33887522,
+    "rust_pct": 10.1
+   },
+   "nontest": {
+    "JavaScript": 1710341,
+    "Python": 964198,
+    "C++": 8147670,
+    "C": 4223275,
+    "HTML": 247263,
+    "Rust": 2973806,
+    "Java": 258672,
+    "Assembly": 274895,
+    "total": 18800120,
+    "rust_pct": 15.82
+   }
+  },
+  "FIREFOX_102_0_RELEASE": {
+   "all": {
+    "JavaScript": 9473148,
+    "Python": 1603416,
+    "C++": 9028242,
+    "C": 4492457,
+    "HTML": 5454740,
+    "Rust": 3452781,
+    "Java": 267911,
+    "Assembly": 276662,
+    "total": 34049357,
+    "rust_pct": 10.14
+   },
+   "nontest": {
+    "JavaScript": 1698827,
+    "Python": 963417,
+    "C++": 8172813,
+    "C": 4236444,
+    "HTML": 250712,
+    "Rust": 3003719,
+    "Java": 259264,
+    "Assembly": 275877,
+    "total": 18861073,
+    "rust_pct": 15.93
+   }
+  },
+  "FIREFOX_103_0_RELEASE": {
+   "all": {
+    "JavaScript": 9503651,
+    "Python": 1606488,
+    "C++": 9038010,
+    "C": 4747853,
+    "HTML": 5464470,
+    "Rust": 3454277,
+    "Java": 268171,
+    "Assembly": 276662,
+    "total": 34359582,
+    "rust_pct": 10.05
+   },
+   "nontest": {
+    "JavaScript": 1709839,
+    "Python": 965238,
+    "C++": 8181993,
+    "C": 4491858,
+    "HTML": 251733,
+    "Rust": 3126246,
+    "Java": 259457,
+    "Assembly": 275877,
+    "total": 19262241,
+    "rust_pct": 16.23
+   }
+  },
+  "FIREFOX_104_0_RELEASE": {
+   "all": {
+    "JavaScript": 9527237,
+    "Python": 1607700,
+    "C++": 9120820,
+    "C": 4773417,
+    "HTML": 5478554,
+    "Rust": 3456466,
+    "Java": 268257,
+    "Assembly": 277217,
+    "total": 34509668,
+    "rust_pct": 10.02
+   },
+   "nontest": {
+    "JavaScript": 1717241,
+    "Python": 964988,
+    "C++": 8255268,
+    "C": 4516790,
+    "HTML": 252071,
+    "Rust": 3128496,
+    "Java": 259515,
+    "Assembly": 276319,
+    "total": 19370688,
+    "rust_pct": 16.15
+   }
+  },
+  "FIREFOX_105_0_RELEASE": {
+   "all": {
+    "JavaScript": 9533782,
+    "Python": 1608723,
+    "C++": 9146754,
+    "C": 4775741,
+    "HTML": 5488537,
+    "Rust": 3289306,
+    "Java": 268075,
+    "Assembly": 277216,
+    "total": 34388134,
+    "rust_pct": 9.57
+   },
+   "nontest": {
+    "JavaScript": 1727650,
+    "Python": 965679,
+    "C++": 8279016,
+    "C": 4519031,
+    "HTML": 252707,
+    "Rust": 2978972,
+    "Java": 259317,
+    "Assembly": 276318,
+    "total": 19258690,
+    "rust_pct": 15.47
+   }
+  },
+  "FIREFOX_106_0_RELEASE": {
+   "all": {
+    "JavaScript": 9570253,
+    "Python": 1628397,
+    "C++": 9506825,
+    "C": 4815423,
+    "HTML": 5505707,
+    "Rust": 3291266,
+    "Java": 281560,
+    "Assembly": 273938,
+    "total": 34873369,
+    "rust_pct": 9.44
+   },
+   "nontest": {
+    "JavaScript": 1731166,
+    "Python": 981009,
+    "C++": 8584219,
+    "C": 4551803,
+    "HTML": 252761,
+    "Rust": 2985480,
+    "Java": 271681,
+    "Assembly": 273040,
+    "total": 19631159,
+    "rust_pct": 15.21
+   }
+  },
+  "FIREFOX_107_0_RELEASE": {
+   "all": {
+    "JavaScript": 9584620,
+    "Python": 1634794,
+    "C++": 9516870,
+    "C": 4816496,
+    "HTML": 5529835,
+    "Rust": 3301240,
+    "Java": 281808,
+    "Assembly": 273938,
+    "total": 34939601,
+    "rust_pct": 9.45
+   },
+   "nontest": {
+    "JavaScript": 1734079,
+    "Python": 985231,
+    "C++": 8592996,
+    "C": 4552851,
+    "HTML": 252556,
+    "Rust": 2995719,
+    "Java": 271826,
+    "Assembly": 273040,
+    "total": 19658298,
+    "rust_pct": 15.24
+   }
+  },
+  "FIREFOX_108_0_RELEASE": {
+   "all": {
+    "JavaScript": 9597969,
+    "Python": 1609404,
+    "C++": 9524055,
+    "C": 4822543,
+    "HTML": 5565939,
+    "Rust": 3323686,
+    "Java": 282151,
+    "Assembly": 274078,
+    "total": 34999825,
+    "rust_pct": 9.5
+   },
+   "nontest": {
+    "JavaScript": 1721129,
+    "Python": 957080,
+    "C++": 8599375,
+    "C": 4559402,
+    "HTML": 252862,
+    "Rust": 3015680,
+    "Java": 272060,
+    "Assembly": 273180,
+    "total": 19650768,
+    "rust_pct": 15.35
+   }
+  },
+  "FIREFOX_109_0_RELEASE": {
+   "all": {
+    "JavaScript": 9514316,
+    "Python": 1609666,
+    "C++": 9669010,
+    "C": 4883780,
+    "HTML": 5583634,
+    "Rust": 3362280,
+    "Java": 282159,
+    "Assembly": 276224,
+    "total": 35181069,
+    "rust_pct": 9.56
+   },
+   "nontest": {
+    "JavaScript": 1733838,
+    "Python": 956138,
+    "C++": 8740616,
+    "C": 4620539,
+    "HTML": 253296,
+    "Rust": 3052260,
+    "Java": 272060,
+    "Assembly": 275334,
+    "total": 19904081,
+    "rust_pct": 15.33
+   }
+  },
+  "FIREFOX_110_0_RELEASE": {
+   "all": {
+    "JavaScript": 9811147,
+    "Python": 1615911,
+    "C++": 9697140,
+    "C": 4893982,
+    "HTML": 5608603,
+    "Rust": 3354711,
+    "Java": 282353,
+    "Assembly": 276224,
+    "total": 35540071,
+    "rust_pct": 9.44
+   },
+   "nontest": {
+    "JavaScript": 1746095,
+    "Python": 957389,
+    "C++": 8766037,
+    "C": 4630656,
+    "HTML": 255222,
+    "Rust": 3038662,
+    "Java": 272254,
+    "Assembly": 275334,
+    "total": 19941649,
+    "rust_pct": 15.24
+   }
+  },
+  "FIREFOX_111_0_RELEASE": {
+   "all": {
+    "JavaScript": 9850830,
+    "Python": 1615332,
+    "C++": 9630767,
+    "C": 4984495,
+    "HTML": 5623462,
+    "Rust": 3365822,
+    "Java": 282941,
+    "Assembly": 277863,
+    "total": 35631512,
+    "rust_pct": 9.45
+   },
+   "nontest": {
+    "JavaScript": 1772157,
+    "Python": 958006,
+    "C++": 8838802,
+    "C": 4792947,
+    "HTML": 255567,
+    "Rust": 3048420,
+    "Java": 272818,
+    "Assembly": 276973,
+    "total": 20215690,
+    "rust_pct": 15.08
+   }
+  },
+  "FIREFOX_112_0_RELEASE": {
+   "all": {
+    "JavaScript": 9891492,
+    "Python": 1624439,
+    "C++": 9654232,
+    "C": 5008964,
+    "HTML": 5635655,
+    "Rust": 3370363,
+    "Java": 282973,
+    "Assembly": 277863,
+    "total": 35745981,
+    "rust_pct": 9.43
+   },
+   "nontest": {
+    "JavaScript": 1781250,
+    "Python": 958928,
+    "C++": 8854569,
+    "C": 4817173,
+    "HTML": 255561,
+    "Rust": 3051766,
+    "Java": 272850,
+    "Assembly": 276973,
+    "total": 20269070,
+    "rust_pct": 15.06
+   }
+  },
+  "FIREFOX_113_0_RELEASE": {
+   "all": {
+    "JavaScript": 9970762,
+    "Python": 1663944,
+    "C++": 9646973,
+    "C": 5013171,
+    "HTML": 5652776,
+    "Rust": 3291044,
+    "Java": 273479,
+    "Assembly": 279827,
+    "total": 35791976,
+    "rust_pct": 9.19
+   },
+   "nontest": {
+    "JavaScript": 1741171,
+    "Python": 993984,
+    "C++": 8846991,
+    "C": 4821298,
+    "HTML": 255558,
+    "Rust": 2986062,
+    "Java": 265122,
+    "Assembly": 278937,
+    "total": 20189123,
+    "rust_pct": 14.79
+   }
+  },
+  "FIREFOX_114_0_RELEASE": {
+   "all": {
+    "JavaScript": 9981871,
+    "Python": 1672045,
+    "C++": 9541058,
+    "C": 4968825,
+    "HTML": 5675037,
+    "Rust": 3294735,
+    "Java": 273400,
+    "Assembly": 280937,
+    "total": 35687908,
+    "rust_pct": 9.23
+   },
+   "nontest": {
+    "JavaScript": 1745322,
+    "Python": 994444,
+    "C++": 8739686,
+    "C": 4777254,
+    "HTML": 255755,
+    "Rust": 2988575,
+    "Java": 265013,
+    "Assembly": 280047,
+    "total": 20046096,
+    "rust_pct": 14.91
+   }
+  },
+  "FIREFOX_115_0_RELEASE": {
+   "all": {
+    "JavaScript": 9836444,
+    "Python": 1670605,
+    "C++": 9539949,
+    "C": 4973378,
+    "HTML": 5710110,
+    "Rust": 3290357,
+    "Java": 273777,
+    "Assembly": 281142,
+    "total": 35575762,
+    "rust_pct": 9.25
+   },
+   "nontest": {
+    "JavaScript": 1744371,
+    "Python": 999062,
+    "C++": 8736185,
+    "C": 4781769,
+    "HTML": 263014,
+    "Rust": 2984721,
+    "Java": 265396,
+    "Assembly": 280252,
+    "total": 20054770,
+    "rust_pct": 14.88
+   }
+  },
+  "FIREFOX_116_0_RELEASE": {
+   "all": {
+    "JavaScript": 9879768,
+    "Python": 1671374,
+    "C++": 9602742,
+    "C": 4984048,
+    "HTML": 5742438,
+    "Rust": 3356027,
+    "Java": 274286,
+    "Assembly": 285325,
+    "total": 35796008,
+    "rust_pct": 9.38
+   },
+   "nontest": {
+    "JavaScript": 1744459,
+    "Python": 999036,
+    "C++": 8793126,
+    "C": 4790927,
+    "HTML": 276982,
+    "Rust": 3036144,
+    "Java": 265866,
+    "Assembly": 284435,
+    "total": 20190975,
+    "rust_pct": 15.04
+   }
+  },
+  "FIREFOX_117_0_RELEASE": {
+   "all": {
+    "JavaScript": 9890367,
+    "Python": 1697788,
+    "C++": 9744314,
+    "C": 5053287,
+    "HTML": 5758042,
+    "Rust": 3380623,
+    "Java": 274416,
+    "Assembly": 285549,
+    "total": 36084386,
+    "rust_pct": 9.37
+   },
+   "nontest": {
+    "JavaScript": 1722676,
+    "Python": 1021486,
+    "C++": 8931970,
+    "C": 4859811,
+    "HTML": 277387,
+    "Rust": 3057991,
+    "Java": 265986,
+    "Assembly": 284659,
+    "total": 20421966,
+    "rust_pct": 14.97
+   }
+  },
+  "FIREFOX_118_0_RELEASE": {
+   "all": {
+    "JavaScript": 9937962,
+    "Python": 1707631,
+    "C++": 9763195,
+    "C": 5055988,
+    "HTML": 5773624,
+    "Rust": 3427490,
+    "Java": 275477,
+    "Assembly": 285553,
+    "total": 36226920,
+    "rust_pct": 9.46
+   },
+   "nontest": {
+    "JavaScript": 1736799,
+    "Python": 1022362,
+    "C++": 8949494,
+    "C": 4862456,
+    "HTML": 277511,
+    "Rust": 3107390,
+    "Java": 266910,
+    "Assembly": 284663,
+    "total": 20507585,
+    "rust_pct": 15.15
+   }
+  },
+  "FIREFOX_119_0_RELEASE": {
+   "all": {
+    "JavaScript": 9950475,
+    "Python": 1705591,
+    "C++": 9762280,
+    "C": 5060367,
+    "HTML": 5791393,
+    "Rust": 3917941,
+    "Java": 275859,
+    "Assembly": 285553,
+    "total": 36749459,
+    "rust_pct": 10.66
+   },
+   "nontest": {
+    "JavaScript": 1733996,
+    "Python": 1019291,
+    "C++": 8946057,
+    "C": 4866795,
+    "HTML": 278167,
+    "Rust": 3596924,
+    "Java": 267276,
+    "Assembly": 284663,
+    "total": 20993169,
+    "rust_pct": 17.13
+   }
+  },
+  "FIREFOX_120_0_RELEASE": {
+   "all": {
+    "JavaScript": 10015173,
+    "Python": 1739044,
+    "C++": 9809467,
+    "C": 5074785,
+    "HTML": 5807267,
+    "Rust": 4213489,
+    "Java": 277004,
+    "Assembly": 285835,
+    "total": 37222064,
+    "rust_pct": 11.32
+   },
+   "nontest": {
+    "JavaScript": 1735953,
+    "Python": 1051121,
+    "C++": 8990706,
+    "C": 4884629,
+    "HTML": 278407,
+    "Rust": 3886565,
+    "Java": 268412,
+    "Assembly": 285420,
+    "total": 21381213,
+    "rust_pct": 18.18
+   }
+  },
+  "FIREFOX_121_0_RELEASE": {
+   "all": {
+    "JavaScript": 10057753,
+    "Python": 1746004,
+    "C++": 9829572,
+    "C": 5078366,
+    "HTML": 5824416,
+    "Rust": 4233056,
+    "Java": 276258,
+    "Assembly": 286806,
+    "total": 37332231,
+    "rust_pct": 11.34
+   },
+   "nontest": {
+    "JavaScript": 1739002,
+    "Python": 1052831,
+    "C++": 9009160,
+    "C": 4888186,
+    "HTML": 278903,
+    "Rust": 3904444,
+    "Java": 267658,
+    "Assembly": 286391,
+    "total": 21426575,
+    "rust_pct": 18.22
+   }
+  },
+  "FIREFOX_122_0_RELEASE": {
+   "all": {
+    "JavaScript": 10268568,
+    "Python": 1741278,
+    "C++": 9810584,
+    "C": 5101553,
+    "HTML": 5888366,
+    "Rust": 4306541,
+    "Java": 276983,
+    "Assembly": 287532,
+    "total": 37681405,
+    "rust_pct": 11.43
+   },
+   "nontest": {
+    "JavaScript": 1742652,
+    "Python": 1049808,
+    "C++": 9033830,
+    "C": 4918490,
+    "HTML": 278453,
+    "Rust": 3978493,
+    "Java": 268383,
+    "Assembly": 287117,
+    "total": 21557226,
+    "rust_pct": 18.46
+   }
+  },
+  "FIREFOX_123_0_RELEASE": {
+   "all": {
+    "JavaScript": 10286140,
+    "Python": 1750091,
+    "C++": 9924991,
+    "C": 5287512,
+    "HTML": 5913176,
+    "Rust": 4318900,
+    "Java": 277047,
+    "Assembly": 286732,
+    "total": 38044589,
+    "rust_pct": 11.35
+   },
+   "nontest": {
+    "JavaScript": 1747782,
+    "Python": 1054757,
+    "C++": 9128465,
+    "C": 5115027,
+    "HTML": 277797,
+    "Rust": 3989701,
+    "Java": 268447,
+    "Assembly": 286317,
+    "total": 21868293,
+    "rust_pct": 18.24
+   }
+  },
+  "FIREFOX_124_0_RELEASE": {
+   "all": {
+    "JavaScript": 10336981,
+    "Python": 1758313,
+    "C++": 9946274,
+    "C": 5296555,
+    "HTML": 5927381,
+    "Rust": 4267373,
+    "Java": 277900,
+    "Assembly": 288491,
+    "total": 38099268,
+    "rust_pct": 11.2
+   },
+   "nontest": {
+    "JavaScript": 1755984,
+    "Python": 1055470,
+    "C++": 9145627,
+    "C": 5124001,
+    "HTML": 278382,
+    "Rust": 3936428,
+    "Java": 269275,
+    "Assembly": 288076,
+    "total": 21853243,
+    "rust_pct": 18.01
+   }
+  },
+  "FIREFOX_126_0_RELEASE": {
+   "all": {
+    "JavaScript": 10420260,
+    "Python": 1783941,
+    "C++": 9981544,
+    "C": 5318859,
+    "HTML": 5939063,
+    "Rust": 4311972,
+    "Java": 279504,
+    "Assembly": 288088,
+    "total": 38323231,
+    "rust_pct": 11.25
+   },
+   "nontest": {
+    "JavaScript": 1789518,
+    "Python": 1072585,
+    "C++": 9182843,
+    "C": 5147529,
+    "Rust": 3976097,
+    "HTML": 284872,
+    "Java": 269793,
+    "Assembly": 287673,
+    "total": 22010910,
+    "rust_pct": 18.06
+   }
+  },
+  "FIREFOX_127_0_RELEASE": {
+   "all": {
+    "JavaScript": 10575427,
+    "Python": 1803993,
+    "C++": 10174550,
+    "C": 5346078,
+    "HTML": 5978286,
+    "Rust": 4348662,
+    "Java": 279308,
+    "Assembly": 291221,
+    "total": 38797525,
+    "rust_pct": 11.21
+   },
+   "nontest": {
+    "JavaScript": 1850783,
+    "Python": 1071556,
+    "C++": 9371841,
+    "C": 5174600,
+    "Rust": 4000602,
+    "HTML": 286693,
+    "Java": 269653,
+    "Assembly": 290806,
+    "total": 22316534,
+    "rust_pct": 17.93
+   }
+  },
+  "FIREFOX_128_0_RELEASE": {
+   "all": {
+    "JavaScript": 10611581,
+    "Python": 1822605,
+    "C++": 10198390,
+    "C": 5326255,
+    "HTML": 6002647,
+    "Rust": 4338255,
+    "Java": 280315,
+    "Assembly": 291321,
+    "total": 38871369,
+    "rust_pct": 11.16
+   },
+   "nontest": {
+    "JavaScript": 1863660,
+    "Python": 1087470,
+    "C++": 9392849,
+    "C": 5154622,
+    "Rust": 3988300,
+    "HTML": 288471,
+    "Java": 270469,
+    "Assembly": 290906,
+    "total": 22336747,
+    "rust_pct": 17.86
+   }
+  },
+  "FIREFOX_129_0_RELEASE": {
+   "all": {
+    "JavaScript": 10623051,
+    "Python": 1829936,
+    "C++": 10230880,
+    "C": 5344383,
+    "HTML": 6027593,
+    "Rust": 4384571,
+    "Java": 280363,
+    "Assembly": 293205,
+    "total": 39013982,
+    "rust_pct": 11.24
+   },
+   "nontest": {
+    "JavaScript": 1878243,
+    "Python": 1087717,
+    "C++": 9417395,
+    "C": 5172644,
+    "Rust": 4035383,
+    "HTML": 289449,
+    "Java": 270485,
+    "Assembly": 292790,
+    "total": 22444106,
+    "rust_pct": 17.98
+   }
+  },
+  "FIREFOX_130_0_RELEASE": {
+   "all": {
+    "JavaScript": 10629502,
+    "Python": 1832982,
+    "C++": 10255528,
+    "C": 5337984,
+    "HTML": 6069693,
+    "Rust": 4366958,
+    "Java": 280383,
+    "Assembly": 294610,
+    "total": 39067640,
+    "rust_pct": 11.18
+   },
+   "nontest": {
+    "JavaScript": 1892800,
+    "Python": 1086207,
+    "C++": 9438142,
+    "C": 5166207,
+    "Rust": 4009165,
+    "HTML": 293330,
+    "Java": 270573,
+    "Assembly": 294195,
+    "total": 22450619,
+    "rust_pct": 17.86
+   }
+  },
+  "FIREFOX_131_0_RELEASE": {
+   "all": {
+    "JavaScript": 10679635,
+    "Python": 1851921,
+    "C++": 10269982,
+    "C": 5338703,
+    "HTML": 5985542,
+    "Rust": 4395184,
+    "Java": 280661,
+    "Assembly": 294610,
+    "total": 39096238,
+    "rust_pct": 11.24
+   },
+   "nontest": {
+    "JavaScript": 1890832,
+    "Python": 1094019,
+    "C++": 9449332,
+    "C": 5167203,
+    "Rust": 4032501,
+    "HTML": 173468,
+    "Java": 270851,
+    "Assembly": 294195,
+    "total": 22372401,
+    "rust_pct": 18.02
+   }
+  },
+  "FIREFOX_132_0_RELEASE": {
+   "all": {
+    "JavaScript": 10777742,
+    "Python": 1855979,
+    "C++": 10293945,
+    "C": 5352317,
+    "HTML": 6002025,
+    "Rust": 4528463,
+    "Java": 280703,
+    "Assembly": 294520,
+    "total": 39385694,
+    "rust_pct": 11.5
+   },
+   "nontest": {
+    "JavaScript": 1923805,
+    "Python": 1094384,
+    "C++": 9469019,
+    "C": 5179370,
+    "Rust": 4161396,
+    "HTML": 174876,
+    "Java": 270930,
+    "Assembly": 294105,
+    "total": 22567885,
+    "rust_pct": 18.44
+   }
+  },
+  "FIREFOX_133_0_RELEASE": {
+   "all": {
+    "JavaScript": 10802980,
+    "Python": 2024146,
+    "C++": 10313088,
+    "C": 5323344,
+    "HTML": 6069260,
+    "Rust": 4536552,
+    "Java": 280866,
+    "Assembly": 294406,
+    "total": 39644642,
+    "rust_pct": 11.44
+   },
+   "nontest": {
+    "JavaScript": 1935470,
+    "Python": 1259659,
+    "C++": 9484861,
+    "C": 5154063,
+    "Rust": 4169365,
+    "HTML": 174973,
+    "Java": 271088,
+    "Assembly": 293991,
+    "total": 22743470,
+    "rust_pct": 18.33
+   }
+  },
+  "FIREFOX_134_0_RELEASE": {
+   "all": {
+    "JavaScript": 10852364,
+    "Python": 2031566,
+    "C++": 10357254,
+    "C": 5330030,
+    "HTML": 6083779,
+    "Rust": 4594806,
+    "Java": 280950,
+    "Assembly": 293971,
+    "total": 39824720,
+    "rust_pct": 11.54
+   },
+   "nontest": {
+    "JavaScript": 1949899,
+    "Python": 1262124,
+    "C++": 9526899,
+    "C": 5160715,
+    "Rust": 4226507,
+    "HTML": 176821,
+    "Java": 271172,
+    "Assembly": 293556,
+    "total": 22867693,
+    "rust_pct": 18.48
+   }
+  },
+  "FIREFOX_135_0_RELEASE": {
+   "all": {
+    "JavaScript": 11096119,
+    "Python": 2049227,
+    "C++": 10365290,
+    "C": 5336648,
+    "HTML": 6114967,
+    "Rust": 4673772,
+    "Java": 281127,
+    "Assembly": 293761,
+    "total": 40210911,
+    "rust_pct": 11.62
+   },
+   "nontest": {
+    "JavaScript": 1968568,
+    "Python": 1275054,
+    "C++": 9545981,
+    "C": 5172525,
+    "Rust": 4297966,
+    "HTML": 178350,
+    "Java": 271364,
+    "Assembly": 293346,
+    "total": 23003154,
+    "rust_pct": 18.68
+   }
+  },
+  "FIREFOX_136_0_RELEASE": {
+   "all": {
+    "JavaScript": 11149940,
+    "Python": 2083545,
+    "C++": 10428663,
+    "C": 5353127,
+    "HTML": 6138792,
+    "Rust": 4686427,
+    "Java": 281418,
+    "Assembly": 293830,
+    "total": 40415742,
+    "rust_pct": 11.6
+   },
+   "nontest": {
+    "JavaScript": 1960363,
+    "Python": 1309049,
+    "C++": 9607411,
+    "C": 5189704,
+    "Rust": 4309918,
+    "HTML": 177122,
+    "Java": 271649,
+    "Assembly": 293415,
+    "total": 23118631,
+    "rust_pct": 18.64
+   }
+  },
+  "FIREFOX_137_0_RELEASE": {
+   "all": {
+    "JavaScript": 11174126,
+    "Python": 2068831,
+    "C++": 10430601,
+    "C": 5355597,
+    "HTML": 6167575,
+    "Rust": 4530117,
+    "Java": 280998,
+    "Assembly": 293944,
+    "total": 40301789,
+    "rust_pct": 11.24
+   },
+   "nontest": {
+    "JavaScript": 1963958,
+    "Python": 1296907,
+    "C++": 9607363,
+    "C": 5192101,
+    "Rust": 4154649,
+    "HTML": 178802,
+    "Java": 271642,
+    "Assembly": 293529,
+    "total": 22958951,
+    "rust_pct": 18.1
+   }
+  },
+  "FIREFOX_138_0_RELEASE": {
+   "all": {
+    "JavaScript": 11171905,
+    "Python": 2076380,
+    "C++": 10462800,
+    "C": 5362123,
+    "HTML": 6188877,
+    "Rust": 4651323,
+    "Java": 281830,
+    "Assembly": 293944,
+    "total": 40489182,
+    "rust_pct": 11.49
+   },
+   "nontest": {
+    "JavaScript": 1939331,
+    "Python": 1298956,
+    "C++": 9636517,
+    "C": 5197909,
+    "Rust": 4274928,
+    "HTML": 177272,
+    "Java": 272485,
+    "Assembly": 293529,
+    "total": 23090927,
+    "rust_pct": 18.51
+   }
+  },
+  "FIREFOX_139_0_RELEASE": {
+   "all": {
+    "JavaScript": 11210140,
+    "Python": 2094649,
+    "C++": 10454414,
+    "C": 5387788,
+    "HTML": 6210577,
+    "Rust": 4722632,
+    "Java": 281307,
+    "Assembly": 293944,
+    "total": 40655451,
+    "rust_pct": 11.62
+   },
+   "nontest": {
+    "JavaScript": 1949986,
+    "Python": 1314954,
+    "C++": 9621952,
+    "C": 5222561,
+    "Rust": 4325909,
+    "HTML": 178374,
+    "Java": 271956,
+    "Assembly": 293529,
+    "total": 23179221,
+    "rust_pct": 18.66
+   }
+  },
+  "FIREFOX_140_0_RELEASE": {
+   "all": {
+    "JavaScript": 11256639,
+    "Python": 2103065,
+    "C++": 10535579,
+    "C": 5427648,
+    "HTML": 6232876,
+    "Rust": 4829132,
+    "Java": 282048,
+    "Assembly": 293940,
+    "total": 40960927,
+    "rust_pct": 11.79
+   },
+   "nontest": {
+    "JavaScript": 1956855,
+    "Python": 1321221,
+    "C++": 9700649,
+    "C": 5262340,
+    "Rust": 4413713,
+    "HTML": 177600,
+    "Java": 272613,
+    "Assembly": 293525,
+    "total": 23398516,
+    "rust_pct": 18.86
+   }
+  },
+  "FIREFOX_141_0_RELEASE": {
+   "all": {
+    "JavaScript": 11200370,
+    "Python": 2085289,
+    "C++": 10602575,
+    "C": 5453574,
+    "HTML": 6242916,
+    "Rust": 4846907,
+    "Java": 282520,
+    "Assembly": 293946,
+    "total": 41008097,
+    "rust_pct": 11.82
+   },
+   "nontest": {
+    "JavaScript": 1937075,
+    "Python": 1303743,
+    "C++": 9763749,
+    "C": 5288058,
+    "Rust": 4423968,
+    "HTML": 175744,
+    "Java": 273085,
+    "Assembly": 293531,
+    "total": 23458953,
+    "rust_pct": 18.86
+   }
+  },
+  "FIREFOX_142_0_RELEASE": {
+   "all": {
+    "JavaScript": 11263520,
+    "Python": 2112145,
+    "C++": 10627932,
+    "C": 5460361,
+    "HTML": 6270621,
+    "Rust": 4942174,
+    "Java": 283590,
+    "Assembly": 293946,
+    "total": 41254289,
+    "rust_pct": 11.98
+   },
+   "nontest": {
+    "JavaScript": 1971960,
+    "Python": 1317595,
+    "C++": 9787205,
+    "C": 5294773,
+    "Rust": 4508084,
+    "HTML": 177056,
+    "Java": 274205,
+    "Assembly": 293531,
+    "total": 23624409,
+    "rust_pct": 19.08
+   }
+  },
+  "FIREFOX_143_0_RELEASE": {
+   "all": {
+    "JavaScript": 11307814,
+    "Python": 2122904,
+    "C++": 10669812,
+    "C": 5482718,
+    "HTML": 6289687,
+    "Rust": 5033231,
+    "Java": 285286,
+    "Assembly": 294671,
+    "total": 41486123,
+    "rust_pct": 12.13
+   },
+   "nontest": {
+    "JavaScript": 1979144,
+    "Python": 1324327,
+    "C++": 9826482,
+    "C": 5317062,
+    "Rust": 4577377,
+    "HTML": 178484,
+    "Java": 275546,
+    "Assembly": 294256,
+    "total": 23772678,
+    "rust_pct": 19.25
+   }
+  },
+  "FIREFOX_144_0_RELEASE": {
+   "all": {
+    "JavaScript": 11335262,
+    "Python": 2126550,
+    "C++": 10800489,
+    "C": 5528375,
+    "HTML": 6306710,
+    "Rust": 5046736,
+    "Java": 286556,
+    "Assembly": 294671,
+    "total": 41725349,
+    "rust_pct": 12.1
+   },
+   "nontest": {
+    "JavaScript": 1991343,
+    "Python": 1325192,
+    "C++": 9973877,
+    "C": 5363344,
+    "Rust": 4593668,
+    "HTML": 179110,
+    "Java": 276797,
+    "Assembly": 294256,
+    "total": 23997587,
+    "rust_pct": 19.14
+   }
+  },
+  "FIREFOX_145_0_RELEASE": {
+   "all": {
+    "JavaScript": 11413343,
+    "Python": 2132730,
+    "C++": 10827159,
+    "C": 5535992,
+    "HTML": 6336504,
+    "Rust": 5087722,
+    "Java": 286914,
+    "Assembly": 294671,
+    "total": 41915035,
+    "rust_pct": 12.14
+   },
+   "nontest": {
+    "JavaScript": 2026079,
+    "Python": 1326492,
+    "C++": 9995552,
+    "C": 5370861,
+    "Rust": 4631955,
+    "HTML": 180376,
+    "Java": 277098,
+    "Assembly": 294256,
+    "total": 24102669,
+    "rust_pct": 19.22
+   }
+  },
+  "FIREFOX_146_0_RELEASE": {
+   "all": {
+    "JavaScript": 11511544,
+    "Python": 2142607,
+    "C++": 10842513,
+    "C": 5524012,
+    "HTML": 6380910,
+    "Rust": 5101518,
+    "Java": 286664,
+    "Assembly": 294671,
+    "total": 42084439,
+    "rust_pct": 12.12
+   },
+   "nontest": {
+    "JavaScript": 2041044,
+    "Python": 1328702,
+    "C++": 9998414,
+    "C": 5353780,
+    "Rust": 4645499,
+    "HTML": 180962,
+    "Java": 276835,
+    "Assembly": 294256,
+    "total": 24119492,
+    "rust_pct": 19.26
+   }
+  },
+  "FIREFOX_147_0_RELEASE": {
+   "all": {
+    "JavaScript": 11637834,
+    "Python": 2148641,
+    "C++": 10870607,
+    "C": 5538708,
+    "HTML": 6410197,
+    "Rust": 5090304,
+    "Java": 286893,
+    "Assembly": 294671,
+    "total": 42277855,
+    "rust_pct": 12.04
+   },
+   "nontest": {
+    "JavaScript": 2058103,
+    "Python": 1330044,
+    "C++": 10022387,
+    "C": 5368409,
+    "Rust": 4632951,
+    "HTML": 181496,
+    "Java": 277070,
+    "Assembly": 294256,
+    "total": 24164716,
+    "rust_pct": 19.17
+   }
+  },
+  "FIREFOX_148_0_RELEASE": {
+   "all": {
+    "JavaScript": 11924061,
+    "Python": 2152663,
+    "C++": 10887599,
+    "C": 5543399,
+    "HTML": 6439436,
+    "Rust": 5135299,
+    "Java": 286936,
+    "Assembly": 294684,
+    "total": 42664077,
+    "rust_pct": 12.04
+   },
+   "nontest": {
+    "JavaScript": 2089085,
+    "Python": 1331408,
+    "C++": 10037811,
+    "C": 5373025,
+    "Rust": 4680555,
+    "HTML": 183033,
+    "Java": 277113,
+    "Assembly": 294269,
+    "total": 24266299,
+    "rust_pct": 19.29
+   }
+  },
+  "FIREFOX_149_0_RELEASE": {
+   "all": {
+    "JavaScript": 12028949,
+    "Python": 1934182,
+    "C++": 10681296,
+    "C": 5485407,
+    "HTML": 6477147,
+    "Rust": 5420309,
+    "Java": 287438,
+    "Assembly": 294696,
+    "total": 42609424,
+    "rust_pct": 12.72
+   },
+   "nontest": {
+    "JavaScript": 2115381,
+    "Python": 1105186,
+    "C++": 9827706,
+    "C": 5314920,
+    "Rust": 4949571,
+    "HTML": 184039,
+    "Java": 277617,
+    "Assembly": 294281,
+    "total": 24068701,
+    "rust_pct": 20.56
+   }
+  },
+  "FIREFOX_150_0_RELEASE": {
+   "all": {
+    "JavaScript": 12086391,
+    "Python": 1944981,
+    "C++": 10728138,
+    "C": 5476342,
+    "HTML": 6528562,
+    "Rust": 5498977,
+    "Java": 288052,
+    "Assembly": 294675,
+    "total": 42846118,
+    "rust_pct": 12.83
+   },
+   "nontest": {
+    "JavaScript": 2115629,
+    "Python": 1109198,
+    "C++": 9868342,
+    "C": 5305851,
+    "Rust": 5004861,
+    "HTML": 198525,
+    "Java": 278237,
+    "Assembly": 294260,
+    "total": 24174903,
+    "rust_pct": 20.7
+   }
+  },
+  "FIREFOX_151_0_RELEASE": {
+   "all": {
+    "JavaScript": 12200093,
+    "Python": 1942293,
+    "C++": 10775135,
+    "C": 5497233,
+    "HTML": 6597481,
+    "Rust": 5519271,
+    "Java": 145210,
+    "Assembly": 294667,
+    "total": 42971383,
+    "rust_pct": 12.84
+   },
+   "nontest": {
+    "JavaScript": 2155761,
+    "Python": 1111297,
+    "C++": 9905718,
+    "C": 5325171,
+    "Rust": 5021288,
+    "HTML": 206912,
+    "Java": 135343,
+    "Assembly": 294252,
+    "total": 24155742,
+    "rust_pct": 20.79
+   }
+  },
+  "FIREFOX_152_0_RELEASE": {
+   "all": {
+    "JavaScript": 15128078,
+    "Python": 2130069,
+    "C++": 10794155,
+    "C": 5588909,
+    "HTML": 6648242,
+    "Rust": 5729151,
+    "Java": 146170,
+    "Assembly": 296354,
+    "total": 46461128,
+    "rust_pct": 12.33
+   },
+   "nontest": {
+    "JavaScript": 2189662,
+    "Python": 1290027,
+    "C++": 9913905,
+    "C": 5416537,
+    "Rust": 5197715,
+    "HTML": 211676,
+    "Java": 136263,
+    "Assembly": 295939,
+    "total": 24651724,
+    "rust_pct": 21.08
+   }
+  },
+  "FIREFOX_153_0_RELEASE": {
+   "all": {
+    "Python": 2145423,
+    "JavaScript": 15204987,
+    "C++": 10907549,
+    "C": 5613978,
+    "HTML": 6702748,
+    "Rust": 5935025,
+    "Java": 146020,
+    "Assembly": 296354,
+    "total": 46952084,
+    "rust_pct": 12.64
+   },
+   "nontest": {
+    "Python": 1295838,
+    "JavaScript": 2222576,
+    "C++": 10017402,
+    "C": 5441322,
+    "Rust": 5394625,
+    "HTML": 217219,
+    "Java": 135973,
+    "Assembly": 295939,
+    "total": 25020894,
+    "rust_pct": 21.56
+   }
+  },
+  "FIREFOX_154_0_RELEASE": {
+   "all": {
+    "Python": 2160901,
+    "JavaScript": 15326502,
+    "C++": 11114606,
+    "C": 5646385,
+    "HTML": 6766454,
+    "Rust": 5995609,
+    "Java": 146212,
+    "Assembly": 296361,
+    "total": 47453030,
+    "rust_pct": 12.63
+   },
+   "nontest": {
+    "Python": 1300784,
+    "JavaScript": 2268731,
+    "C++": 10209376,
+    "C": 5473494,
+    "Rust": 5449058,
+    "HTML": 224386,
+    "Java": 136127,
+    "Assembly": 295946,
+    "total": 25357902,
+    "rust_pct": 21.49
+   }
+  },
+  "FIREFOX_155_0_RELEASE": {
+   "all": {
+    "Python": 2178575,
+    "JavaScript": 15429019,
+    "C++": 11147078,
+    "C": 5653056,
+    "HTML": 6807000,
+    "Rust": 6156871,
+    "Java": 146304,
+    "Assembly": 296391,
+    "total": 47814294,
+    "rust_pct": 12.88
+   },
+   "nontest": {
+    "Python": 1310378,
+    "JavaScript": 2298446,
+    "C++": 10237597,
+    "C": 5477992,
+    "Rust": 5603173,
+    "HTML": 229814,
+    "Java": 136221,
+    "Assembly": 295976,
+    "total": 25589597,
+    "rust_pct": 21.9
+   }
+  },
+  "FIREFOX_156_0_RELEASE": {
+   "all": {
+    "Python": 2186021,
+    "JavaScript": 15519008,
+    "C++": 11154103,
+    "C": 5687197,
+    "HTML": 6850450,
+    "Rust": 6157218,
+    "Java": 147124,
+    "Assembly": 295963,
+    "total": 47997084,
+    "rust_pct": 12.83
+   },
+   "nontest": {
+    "Python": 1312472,
+    "JavaScript": 2324523,
+    "C++": 10238341,
+    "C": 5513502,
+    "Rust": 5603161,
+    "HTML": 232964,
+    "Java": 137041,
+    "Assembly": 295548,
+    "total": 25657552,
+    "rust_pct": 21.84
+   }
+  },
+  "FIREFOX_157_0_RELEASE": {
+   "all": {
+    "Python": 2159226,
+    "JavaScript": 16229210,
+    "C++": 11190622,
+    "C": 5684104,
+    "HTML": 6839860,
+    "Rust": 6172836,
+    "Java": 147346,
+    "Assembly": 295963,
+    "total": 48719167,
+    "rust_pct": 12.67
+   },
+   "nontest": {
+    "Python": 1281628,
+    "JavaScript": 2997940,
+    "C++": 10268555,
+    "C": 5509719,
+    "Rust": 5616315,
+    "HTML": 197874,
+    "Java": 137247,
+    "Assembly": 295548,
+    "total": 26304826,
+    "rust_pct": 21.35
+   }
+  }
+ }
+}

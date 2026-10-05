@@ -14,6 +14,14 @@ Subcommands:
   build-site HISTORY --repo R --out DIR
                            write DIR/data.json: the history, the head point of R and the legacy fields of the old
                            pie chart (meta_date, title_date, lang)
+  set-artifact HISTORY --v N --symbols URL --package URL --repo R
+                           compute the browser artifact of release N from its build's crashreporter-symbols.zip and
+                           package (for example Mozilla's release candidates) and store it in that release's record,
+                           the only change to the file. Refuses a release that already has one; exit status 3 (file
+                           untouched) if the artifact cannot be computed. For release N the build is the last
+                           build<B> directory of https://archive.mozilla.org/pub/firefox/candidates/N.0-candidates/
+                           and its linux-x86_64/en-US/ files firefox-N.0.crashreporter-symbols.zip and
+                           firefox-N.0.tar.xz (.tar.bz2 for older releases)
 
 `backfill` and `head` skip paths under `mobile/` by default (desktop browser only). `--exclude PREFIX` (repeatable)
 replaces that default, `--no-exclude` counts everything. `append` and `build-site` take the prefixes from the
@@ -439,6 +447,15 @@ def append(history, repo, remote='origin'):
     return len(todo)
 
 
+EXIT_UNAVAILABLE = 3   # set-artifact: the artifact cannot be computed (same status as dev/artifact.py)
+
+
+def _artifact_module():
+    """dev/artifact.py, imported on first use (it imports this module, so not at the top)."""
+    import artifact
+    return artifact
+
+
 def build_site(history, repo, out_dir, now=None):
     """Write out_dir/data.json: legacy fields, the history header and releases, and the head point of `repo`."""
     meta, records = read_history(history)
@@ -449,6 +466,35 @@ def build_site(history, repo, out_dir, now=None):
     write_atomic(path, format_history(header, records, {'head': head}))
     log('wrote %s: %d releases and the head at %s' % (path, len(records), head['sha'][:12]))
     return path
+
+
+def set_artifact(history, v, symbols, package, repo, kind='candidates'):
+    """Store the browser artifact of release `v` in `history`, computed from its build's symbols zip and package.
+
+    The artifact is a property of the release: computed once, never overwritten. The FILE records of the build must
+    name the release's own commit (the record's sha). Only that record changes: the file is rewritten with the same
+    writer, and refused if it is not already in that exact layout. Raises artifact.ArtifactUnavailable (file
+    untouched) if the artifact cannot be computed, HistoryError for a usage problem."""
+    with open(history, encoding='utf-8') as f:
+        before = f.read()
+    meta, records = read_history(history)
+    if format_history(meta, records) != before:
+        raise HistoryError('%s is not in the layout format_history() writes; refusing to rewrite it' % history)
+    rec = next((r for r in records if r['v'] == v), None)
+    if rec is None:
+        raise HistoryError('release %d is not in %s' % (v, history))
+    if rec.get('artifact') is not None:
+        raise HistoryError('release %d already has an artifact (a stored artifact is never recomputed)' % v)
+    artifact = _artifact_module()
+    block = artifact.artifact_from_build(symbols, package, repo, sha=rec['sha'],
+                                         source={'kind': kind, 'symbols': symbols, 'package': package},
+                                         excludes=tuple(meta.get('excluded_prefixes', ())))
+    rec['artifact'] = block
+    write_atomic(history, format_history(meta, records))
+    total = sum(block[k] for k in KEYS)
+    log('release %d: artifact at %s, %d lines, Rust %.2f%%, %d paths' % (
+        v, block['sha'][:12], total, 100.0 * block['rust'] / max(total, 1), block['source']['paths']))
+    return block
 
 
 def resolve_excludes(a, parser):
@@ -494,11 +540,24 @@ def main(argv=None):
     p.add_argument('--repo', required=True)
     p.add_argument('--out', required=True, help='output directory (e.g. build)')
 
+    p = sub.add_parser('set-artifact', help='store the browser artifact of release V, computed from its build')
+    p.add_argument('history')
+    p.add_argument('--v', type=int, required=True, help='major release number')
+    p.add_argument('--symbols', required=True, help='URL of the build\'s crashreporter-symbols.zip')
+    p.add_argument('--package', required=True, help='URL of the build\'s package (.tar.xz or .tar.bz2)')
+    p.add_argument('--repo', required=True, help='a clone of mozilla-firefox/firefox (only read)')
+    p.add_argument('--kind', default='candidates', help='source.kind to store (default %(default)s)')
+
     a = ap.parse_args(argv)
     try:
         run(a, ap)
     except HistoryError as e:
         ap.exit(1, '%s: error: %s\n' % (ap.prog, e))
+    except Exception as e:
+        if a.cmd == 'set-artifact' and isinstance(e, _artifact_module().ArtifactUnavailable):
+            log('artifact unavailable: %s; %s left unchanged' % (e, a.history))
+            return EXIT_UNAVAILABLE
+        raise
     return 0
 
 
@@ -515,7 +574,11 @@ def run(a, ap):
             sys.stdout.write(text)
     elif a.cmd == 'build-site':
         build_site(a.history, a.repo, a.out)
+    elif a.cmd == 'set-artifact':
+        set_artifact(a.history, a.v, a.symbols, a.package, a.repo, a.kind)
 
 
 if __name__ == '__main__':
+    # dev/artifact.py imports `history`: let it get this module, not a second copy (one HistoryError class)
+    sys.modules.setdefault('history', sys.modules[__name__])
     sys.exit(main())

@@ -16,6 +16,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import history  # noqa: E402
+import artifact  # noqa: E402
 
 # (path, number of lines, language key or None if not counted, test path?)
 FILES = [
@@ -563,6 +564,83 @@ class BuildSiteTest(GitTestCase):
         self.assertTrue(data['meta_date'].endswith('+00:00'))
         self.assertLess(abs((datetime.fromisoformat(data['meta_date']) - now).total_seconds()), 300)
         self.assertEqual(len(data['lang']), 8)
+
+
+def fake_block(sha, rust=7, kind='symbols'):
+    blk = dict.fromkeys(history.KEYS, 0)
+    blk.update(rust=rust, cpp=20, h=10, js=5, sha=sha,
+               source={'kind': kind, 'libxul_debug_id': 'ABC0', 'modules': 2, 'paths': 30})
+    return blk
+
+
+class SetArtifactTest(GitTestCase):
+    def copy(self):
+        path = os.path.join(self.mkdtemp(), 'history.json')
+        shutil.copy(self.full_history, path)
+        return path
+
+    def run_cli(self, path, v=48):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            try:
+                code = history.main(['set-artifact', path, '--v', str(v), '--symbols', 'https://x/s.zip',
+                                     '--package', 'https://x/p.tar.xz', '--repo', self.up])
+            except SystemExit as e:   # HistoryError: the message and exit status 1
+                code = e.code
+        return code, err.getvalue()
+
+    def test_sets_one_record_and_changes_one_line(self):
+        path = self.copy()
+        sha48 = json.loads(self.full_bytes)['releases'][-1]['sha']
+        calls = []
+
+        def fake(symbols, package, repo, sha=None, source=None, excludes=None, **kw):
+            calls.append((symbols, package, repo, sha, source, excludes))
+            return fake_block(sha, kind=source['kind'])
+        with mock.patch.object(artifact, 'artifact_from_build', fake):
+            code, err = self.run_cli(path)
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [('https://x/s.zip', 'https://x/p.tar.xz', self.up, sha48,
+                                  {'kind': 'candidates', 'symbols': 'https://x/s.zip', 'package': 'https://x/p.tar.xz'},
+                                  ('mobile/',))])
+        with open(path, 'rb') as f:
+            after = f.read()
+        old, new = self.full_bytes.decode().split('\n'), after.decode().split('\n')
+        self.assertEqual(len(old), len(new))
+        changed = [i for i, (a, b) in enumerate(zip(old, new)) if a != b]
+        self.assertEqual(len(changed), 1)
+        rec = json.loads(new[changed[0]].rstrip(','))
+        self.assertEqual(rec['v'], 48)
+        self.assertEqual(rec['artifact'], fake_block(sha48, kind='candidates'))
+        self.assertEqual(list(rec), ['v', 'tag', 'sha', 'date', 'all', 'nontest', 'artifact'])
+        # a stored artifact is never recomputed
+        with mock.patch.object(artifact, 'artifact_from_build', side_effect=AssertionError('must not be called')):
+            code, err = self.run_cli(path)
+        self.assertEqual(code, 1)
+        self.assertIn('already has an artifact', err)
+        with open(path, 'rb') as f:
+            self.assertEqual(f.read(), after)
+
+    def test_unavailable_leaves_the_file_and_exits_3(self):
+        path = self.copy()
+        with mock.patch.object(artifact, 'artifact_from_build',
+                               side_effect=artifact.ArtifactUnavailable('symbols: FILE records name x, expected y')):
+            code, err = self.run_cli(path)
+        self.assertEqual(code, history.EXIT_UNAVAILABLE)
+        self.assertIn('left unchanged', err)
+        with open(path, 'rb') as f:
+            self.assertEqual(f.read(), self.full_bytes)
+
+    def test_unknown_release_and_foreign_layout(self):
+        path = self.copy()
+        code, err = self.run_cli(path, v=99)
+        self.assertEqual(code, 1)
+        self.assertIn('release 99 is not in', err)
+        with open(path, 'w') as f:
+            json.dump(json.loads(self.full_bytes), f, indent=1)
+        code, err = self.run_cli(path)
+        self.assertEqual(code, 1)
+        self.assertIn('refusing to rewrite', err)
 
 
 if __name__ == '__main__':

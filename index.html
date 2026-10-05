@@ -17,6 +17,7 @@
 <style>
 /* Series colours are the validated categorical slots in fixed order (C++ blue, Rust orange, C aqua, JavaScript yellow,
    HTML/CSS magenta, Python green, Java violet, Assembly red). Light and dark tokens; data-theme overrides the system. */
+/* tokens:begin */ /* also copied into methodology.html by dev/render_docs.py */
 :root {
   --bg: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #6b6a64;
   --grid: #e9e8e3; --axis: #c9c8c2; --hair: #dddcd6; --chip: #f1f0ec;
@@ -38,6 +39,7 @@
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
   color-scheme: dark;
 }
+/* tokens:end */
 * { box-sizing: border-box; }
 html { background: var(--bg); }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5; padding-inline: 16px; padding-block: 24px 48px; }
@@ -110,11 +112,21 @@ table.data td.gap { color: var(--muted); }
 .mini .nm { font-weight: 500; }
 .mini .val { font-family: var(--mono); font-weight: 500; white-space: nowrap; }
 .mini.hl { border-top: 2px solid var(--s2); }
-.about { border-top: 1px solid var(--hair); padding-top: 12px; color: var(--ink2); }
-.about h2 { font-size: 15px; margin: 0 0 6px; font-weight: 600; color: var(--ink); }
-.about ul { margin: 0; padding-left: 18px; max-width: 80ch; }
-.about li { margin: 2px 0; }
-.about code { font-family: var(--mono); font-size: 12px; }
+.panel { position: relative; }
+.help { font: inherit; font-family: var(--mono); font-size: 11px; font-weight: 500; line-height: 1; width: 20px; height: 20px;
+  padding: 0; margin-left: 8px; border: 1px solid var(--axis); border-radius: 50%; background: none; color: var(--ink2); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.help:hover, .help[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); background: var(--chip); }
+.legend .help { margin-left: 0; }
+.vhelp { position: absolute; left: 0; z-index: 6; width: min(560px, 100%); background: var(--bg); color: var(--ink2);
+  border: 1px solid var(--axis); border-radius: 6px; padding: 10px 12px; font-size: 13px; line-height: 1.45;
+  box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.vhelp[hidden] { display: none; }
+.vhelp p { margin: 0 0 6px; }
+.vhelp p:last-child { margin-bottom: 0; }
+.vhelp b { color: var(--ink); font-weight: 600; }
+.vhelp code, .pfoot code { font-family: var(--mono); font-size: 12px; }
+.pfoot { margin: 0; border-top: 1px solid var(--hair); padding-top: 10px; color: var(--muted); font-size: 12px; }
 @media (max-width: 760px) { .pie-grid { grid-template-columns: 1fr; } h1 { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -133,24 +145,7 @@ table.data td.gap { color: var(--muted); }
   <div class="tabs" role="tablist" id="tabs" aria-label="Views"></div>
   <div id="panel" class="panel" role="tabpanel"><p class="note">Loading data…</p></div>
 
-  <section class="about" aria-labelledby="about-h">
-    <h2 id="about-h">About the numbers</h2>
-    <ul id="about">
-      <li>Lines in the files tracked by git, by file extension, at each major release tag and at the current head of the
-        default branch. Header files (<code>.h</code>) are split between C and C++ by a fixed ratio
-        (<span id="split">18.5% C, 81.5% C++</span>).</li>
-      <li>Desktop only: <code>mobile/</code> is excluded from every series.</li>
-      <li>Non-test files: the test-detection rules were written for today's tree. Older trees used other directory names,
-        so non-test values for older releases are less reliable.</li>
-      <li>Browser artifact: the source files compiled into the Linux x86-64 desktop browser, taken from the debug symbols
-        of Mozilla's own build, plus the JavaScript, HTML and CSS packed into its <code>omni.ja</code> archives (counted
-        as shipped: bundled and preprocessed). Python and Java do not ship; assembly is not covered and is shown as
-        "not counted". <span id="art-cover">Releases without this data are left as gaps, never zeros.</span>
-        <span id="art-head" hidden></span></li>
-      <li id="tag-note" hidden></li>
-      <li>The numbers behind the page: <a href="data.json">data.json</a>.</li>
-    </ul>
-  </section>
+  <p class="pfoot"><a href="methodology.html">Methodology</a> · <a href="data.json">data.json</a><span id="tag-note" hidden></span></p>
 </div>
 
 <script>
@@ -292,8 +287,53 @@ function seg(label, opts, cur, on) {
   }
   g.appendChild(s); return g;
 }
-const viewSeg = () => seg('View', VIEWS.map(v => ({ k: v.k, name: v.name, title: v.long,
-  disabled: !HAS[v.k], why: 'No browser-artifact data yet' })), st.view, k => { st.view = k; render(); });
+const viewSeg = () => { const g = seg('View', VIEWS.map(v => ({ k: v.k, name: v.name, title: v.long,
+  disabled: !HAS[v.k], why: 'No browser-artifact data yet' })), st.view, k => { st.view = k; render(); }); helpButton(g); return g; };
+
+/* ---------- the (?) next to the view switch: what the three views count ---------- */
+let help = null;   // { btn, pop, open } in the current panel; the panel is rebuilt on every render, which closes it
+function para(parts) {   // a <p> from strings and [tag, text, href] pieces, built without innerHTML
+  const p = el('p');
+  for (const x of parts) {
+    if (typeof x === 'string') { p.appendChild(document.createTextNode(x)); continue; }
+    const e = el(x[0], null, x[1]); if (x[2]) e.href = x[2]; p.appendChild(e);
+  }
+  return p;
+}
+function helpFill(pop) {
+  const sp = D.split, f = v => (v * 100).toFixed(1) + '%';
+  pop.appendChild(para([['b', 'All files'], ': every file tracked by git at the release tag (or the current head), counted by file extension. Lines are newline counts, not lines of code. Header files (',
+    ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp) + ' C++.']));
+  pop.appendChild(para([['b', 'Non-test files'], ': the same, minus files under test directories or with test file names. The rules were written for today\'s tree; older trees used other names, so values for older releases are less reliable.']));
+  const withArt = D.pts.filter(p => p.views.artifact), rels = withArt.filter(p => !p.head).map(p => p.v), hasHead = withArt.some(p => p.head);
+  const cover = !withArt.length ? 'No release has this data yet.'
+    : 'Available for ' + (rels.length ? (rels.length === 1 ? 'release ' : 'releases ') + rels.join(', ') : '') + (rels.length && hasHead ? ' and ' : '')
+      + (hasHead ? 'the head' : '') + (rels.length ? '; a release\'s artifact is counted at its release tag from Mozilla\'s release build.' : '.');
+  const hn = headArtNote();
+  pop.appendChild(para([['b', 'Browser artifact'], ': only the source files compiled into the Linux x86-64 desktop Firefox binaries (from the debug symbols of Mozilla\'s own build), plus the JavaScript, HTML and CSS inside its ',
+    ['code', 'omni.ja'], ' archives, counted as shipped (bundled and preprocessed). ' + cover + (hn ? ' ' + hn.replace('Browser artifact counted', 'The head\'s artifact is counted') : '')
+    + ' Assembly is not covered ("not counted"); Python and Java do not ship.']));
+  pop.appendChild(para([['code', 'mobile/'], ' is excluded from every view. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
+}
+function helpButton(host) {
+  const btn = el('button', 'help', '?'); btn.type = 'button';
+  btn.setAttribute('aria-label', 'What do these views mean?'); btn.title = 'What do these views mean?';
+  btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-controls', 'vhelp');
+  const pop = el('div', 'vhelp'); pop.id = 'vhelp'; pop.hidden = true;
+  pop.setAttribute('role', 'region'); pop.setAttribute('aria-label', 'What the views count');
+  helpFill(pop);
+  btn.onclick = () => setHelp(!help.open);
+  host.appendChild(btn); host.appendChild(pop);   // right after the button in the tab order
+  help = { btn, pop, open: false };
+}
+function setHelp(open, refocus) {
+  if (!help) return;
+  help.open = open; help.pop.hidden = !open; help.btn.setAttribute('aria-expanded', String(open));
+  if (open) {   // below the button, from the panel's left edge, never wider than the panel
+    const pr = document.getElementById('panel').getBoundingClientRect(), br = help.btn.getBoundingClientRect();
+    help.pop.style.top = Math.round(br.bottom - pr.top + 6) + 'px';
+  } else if (refocus) help.btn.focus();
+}
 function legend(isolate) {
   const lg = el('div', 'legend');
   for (const L of LANGS) {
@@ -416,6 +456,7 @@ function seriesKey() {
     it.appendChild(ln); it.appendChild(document.createTextNode(s.name + (HAS[s.k] ? '' : ': no data yet')));
     lg.appendChild(it);
   }
+  helpButton(lg);   // this tab has no View switch; its key names the three views instead
   return lg;
 }
 function drawLangShare(wrap) {
@@ -564,7 +605,7 @@ function langTable() {
 
 /* ---------- page ---------- */
 function panel() {
-  const P = document.getElementById('panel'); P.textContent = '';
+  const P = document.getElementById('panel'); P.textContent = ''; help = null;
   P.setAttribute('aria-labelledby', 'tab-' + st.tab);
   const T = TABS.find(t => t.k === st.tab);
   P.appendChild(el('h2', null, st.tab === 'share' ? 'How much ' + langOf(st.lang).name + '?' : T.title));
@@ -617,26 +658,20 @@ function header() {
   const data = D.data;
   if (data.title_date) document.getElementById('title-date').textContent = data.title_date;
   if (data.meta_date) document.querySelector('meta[name="date"]').setAttribute('content', data.meta_date);
-  const sp = D.split; document.getElementById('split').textContent = (sp.c * 100).toFixed(1) + '% C, ' + (sp.cpp * 100).toFixed(1) + '% C++';
+  // the one release counted at another tag than FIREFOX_<n>_0_RELEASE (125) is named in the footer
   const odd = D.pts.filter(p => !p.head && p.tag && !/_0_RELEASE$/.test(p.tag));
   if (odd.length) {
-    const li = document.getElementById('tag-note'); li.hidden = false;
-    li.textContent = odd.map(p => 'Release ' + p.v + ' has no release tag; it is counted at ' + p.tag + '.').join(' ');
+    const n = document.getElementById('tag-note'); n.hidden = false;
+    n.textContent = ' · ' + odd.map(p => 'Release ' + p.v + ' has no release tag; it is counted at ' + p.tag + '.').join(' ');
   }
-  const withArt = D.pts.filter(p => p.views.artifact);
-  if (withArt.length) {
-    const rels = withArt.filter(p => !p.head).map(p => p.v), hasHead = withArt.some(p => p.head);
-    document.getElementById('art-cover').textContent = 'It is available for ' + (rels.length ? (rels.length === 1 ? 'release ' : 'releases ') + rels.join(', ') : '')
-      + (rels.length && hasHead ? ' and ' : '') + (hasHead ? 'the head' : '') + '; other releases are left as gaps, never zeros. A release\'s artifact is counted at its release tag from Mozilla\'s release build.';
-  }
-  const hn = headArtNote();
-  if (hn) { const e = document.getElementById('art-head'); e.hidden = false; e.textContent = hn.replace('Browser artifact counted', 'The head\'s artifact is counted'); }
   const i = lastIdx('nontest'), j = lastIdx('all'), k = lastIdx('artifact');
   if (i >= 0) {
     const where = D.pts[i].head ? 'At the current head' : 'In ' + ttl(i);
     const parts = ['<b>' + pct(share('nontest', 'Rust', i)) + '</b> of non-test lines'];
     if (j === i) parts.push('<b>' + pct(share('all', 'Rust', j)) + '</b> of all tracked lines');
-    if (k === i) parts.push('<b>' + pct(share('artifact', 'Rust', k)) + '</b> of the browser artifact');
+    // the head's artifact comes from the latest finished build, whose commit can differ from the head's: name it
+    const ab = D.pts[k] && D.pts[k].head && /^[0-9a-f]{7,40}$/.test(D.pts[k].asha || '') ? ' (latest finished build, ' + sha7(D.pts[k].asha) + ')' : '';
+    if (k === i) parts.push('<b>' + pct(share('artifact', 'Rust', k)) + '</b> of the browser artifact' + ab);
     const list = parts.length < 3 ? parts.join(' and ') : parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
     document.getElementById('headline').innerHTML = where + ', Rust is ' + list + '.';
   }
@@ -659,6 +694,9 @@ async function main() {
   st.sel = D.LAST;
   header();
   render();
+  // the help popover closes on Escape (focus back on its button) and on a press anywhere outside it and its button
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && help && help.open) { e.preventDefault(); setHelp(false, true); } });
+  document.addEventListener('pointerdown', e => { if (help && help.open && !help.pop.contains(e.target) && !help.btn.contains(e.target)) setHelp(false); });
   let lastW = document.getElementById('panel').clientWidth, rz;
   window.addEventListener('resize', () => {
     clearTimeout(rz);

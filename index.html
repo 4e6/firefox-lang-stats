@@ -1,48 +1,649 @@
-<html>
-  <head>
-    <title>Language details of the Firefox repo</title>
-    <meta name="description" content="How much Rust in Firefox?" />
-    <meta name="date" content="2026-10-05T16:07:30+00:00" />
-    <meta property="og:title" content="Language details of the Firefox repo" />
-    <meta property="og:description" content="How much Rust in Firefox?" />
-    <meta property="og:url" content="https://4e6.github.io/firefox-lang-stats/" />
-    <meta property="og:image" content="rustacean-orig-noshadow.png" />
-    <link rel="shortcut icon" href="rustacean-orig-noshadow.ico" type="image/x-icon" />
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript">
-      google.charts.load('current', {'packages':['corechart']});
-      google.charts.setOnLoadCallback(drawChart);
-
-      function drawChart() {
-
-        var data = google.visualization.arrayToDataTable([
-          ['Language', 'LOC']
-        , ['Rust', 6249580]
-        , ['C', 5702799]
-        , ['C++', 11250686]
-        , ['JavaScript', 14782996]
-        , ['HTML', 6891174]
-        , ['Python', 2212700]
-        , ['Java', 147626]
-        , ['Assembly', 300962]
-        ]);
-
-        var options = {
-          title: 'Firefox languages in SLOC'
-        };
-
-        var chart = new google.visualization.PieChart(document.getElementById('piechart'));
-
-        chart.draw(data, options);
-      }
-    </script>
-  </head>
-  <body>
-    <a href="https://github.com/4e6/firefox-lang-stats"><img style="position: absolute; top: 0; left: 0; border: 0; z-index:100;" src="https://s3.amazonaws.com/github/ribbons/forkme_left_darkblue_121621.png" alt="Fork me on GitHub"></a>
-    <div style="margin-left: 150px">
-      <h2>How much Rust in Firefox?</h2>
-      <p><a href="https://github.com/mozilla-firefox/firefox">mozilla-firefox/firefox</a> repository statistics on Oct 2026</p>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Language details of the Firefox repo</title>
+<meta name="description" content="How much Rust in Firefox?">
+<meta name="date" content="">
+<meta property="og:title" content="Language details of the Firefox repo">
+<meta property="og:description" content="How much Rust in Firefox?">
+<meta property="og:url" content="https://4e6.github.io/firefox-lang-stats/">
+<meta property="og:image" content="https://4e6.github.io/firefox-lang-stats/rustacean-orig-noshadow.png">
+<link rel="shortcut icon" href="rustacean-orig-noshadow.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js" integrity="sha384-su5kReKyYlIFrI62mbQRKXHzFobMa7BHp1cK6julLPbnYcCW9NIZKJiTODjLPeDh" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+/* Series colours are the validated categorical slots in fixed order (C++ blue, Rust orange, C aqua, JavaScript yellow,
+   HTML/CSS magenta, Python green, Java violet, Assembly red). Light and dark tokens; data-theme overrides the system. */
+:root {
+  --bg: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #6b6a64;
+  --grid: #e9e8e3; --axis: #c9c8c2; --hair: #dddcd6; --chip: #f1f0ec;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1a19; --ink: #ffffff; --ink2: #c3c2b7; --muted: #a09f95;
+    --grid: #2b2b29; --axis: #4a4a46; --hair: #363633; --chip: #262624;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1a19; --ink: #ffffff; --ink2: #c3c2b7; --muted: #a09f95;
+  --grid: #2b2b29; --axis: #4a4a46; --hair: #363633; --chip: #262624;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5; padding-inline: 16px; padding-block: 24px 48px; }
+a { color: inherit; text-decoration-color: var(--axis); text-underline-offset: 2px; }
+a:hover { text-decoration-color: currentColor; }
+.page { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 16px; flex-wrap: wrap; }
+h1 { font-size: 26px; line-height: 1.15; margin: 0; font-weight: 600; text-wrap: balance; }
+.gh { font-size: 13px; color: var(--ink2); white-space: nowrap; }
+.gh svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; fill: currentColor; }
+.dateline { color: var(--ink2); margin: 6px 0 0; }
+.headline { margin: 6px 0 0; max-width: 70ch; }
+.headline b { font-family: var(--mono); font-weight: 500; }
+.note { padding: 10px 12px; border: 1px solid var(--hair); border-radius: 6px; background: var(--chip); color: var(--ink2); max-width: 78ch; }
+.note.err { border-color: var(--s8); color: var(--ink); }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--hair); }
+.tab { font: inherit; font-weight: 500; color: var(--ink2); background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; margin-bottom: -1px; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.tab:hover { color: var(--ink); }
+:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.panel h2 { font-size: 18px; margin: 0 0 10px; font-weight: 600; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 12px; }
+.ctl { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 0; min-width: 0; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--axis); border-radius: 6px; overflow: hidden; max-width: 100%; }
+.seg button { font: inherit; font-size: 13px; background: none; color: var(--ink2); border: 0; padding: 5px 10px; cursor: pointer; border-right: 1px solid var(--axis); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:not([aria-pressed="true"]):not(:disabled):hover { background: var(--chip); }
+.seg button:disabled { color: var(--muted); opacity: .55; cursor: not-allowed; text-decoration: line-through; text-decoration-thickness: 1px; }
+.lab { font-size: 12px; color: var(--muted); margin-right: 6px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.chartwrap { position: relative; min-width: 0; }
+.chartwrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { font-family: var(--mono); font-size: 11px; fill: var(--ink2); }
+svg .strong { fill: var(--ink); font-weight: 500; }
+.tip { position: absolute; pointer-events: none; z-index: 5; background: var(--bg); color: var(--ink); border: 1px solid var(--axis); border-radius: 6px; padding: 8px 10px; font-size: 12px; min-width: 150px; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.tip .t { font-family: var(--mono); font-weight: 500; margin-bottom: 4px; }
+.tip .r { display: flex; align-items: center; gap: 8px; line-height: 1.6; }
+.tip .k { width: 14px; height: 0; border-top: 3px solid; flex: none; }
+.tip .n { color: var(--ink2); flex: 1; }
+.tip .v { font-family: var(--mono); font-weight: 500; color: var(--ink); white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 8px; }
+.legend button, .legend span.it { font: inherit; font-size: 12px; display: inline-flex; gap: 6px; align-items: center; background: none; border: 0; padding: 2px 0; color: var(--ink2); }
+.legend button { cursor: pointer; }
+.legend .sw { width: 12px; height: 12px; border-radius: 2px; }
+.legend .ln { width: 22px; height: 0; border-top-style: solid; }
+.legend button[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
+.pie-grid { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 20px 28px; align-items: center; }
+.pie-grid .chartwrap svg { max-width: 300px; margin: 0 auto; }
+.nodata { color: var(--ink2); border: 1px dashed var(--axis); border-radius: 6px; padding: 24px 12px; text-align: center; }
+.vbig { font-family: var(--mono); font-size: 28px; font-weight: 500; line-height: 1; }
+.vsub { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.scrub { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.scrub input[type=range] { flex: 1; min-width: 160px; accent-color: var(--ink); }
+.play { font: inherit; font-size: 13px; padding: 5px 12px; border: 1px solid var(--axis); background: none; color: var(--ink); border-radius: 6px; cursor: pointer; }
+.play:hover { background: var(--chip); }
+table.data { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+table.data th, table.data td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--hair); font-variant-numeric: tabular-nums; }
+table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data th { font-weight: 500; color: var(--ink2); position: sticky; top: 0; background: var(--bg); }
+table.data .mono { font-family: var(--mono); white-space: nowrap; }
+table.data td.gap { color: var(--muted); }
+.cap { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+.scroll { overflow: auto; max-height: 320px; border: 1px solid var(--hair); border-radius: 6px; }
+.dsum { margin-top: 12px; color: var(--ink2); }
+.dsum summary { cursor: pointer; padding: 4px 0; }
+.mini-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.mini { border-top: 1px solid var(--hair); padding-top: 6px; min-width: 0; }
+.mini .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mini .nm { font-weight: 500; }
+.mini .val { font-family: var(--mono); font-weight: 500; white-space: nowrap; }
+.mini.hl { border-top: 2px solid var(--s2); }
+.about { border-top: 1px solid var(--hair); padding-top: 12px; color: var(--ink2); }
+.about h2 { font-size: 15px; margin: 0 0 6px; font-weight: 600; color: var(--ink); }
+.about ul { margin: 0; padding-left: 18px; max-width: 80ch; }
+.about li { margin: 2px 0; }
+.about code { font-family: var(--mono); font-size: 12px; }
+@media (max-width: 760px) { .pie-grid { grid-template-columns: 1fr; } h1 { font-size: 22px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="top">
+      <h1>How much Rust in Firefox?</h1>
+      <a class="gh" href="https://github.com/4e6/firefox-lang-stats"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Fork me on GitHub</a>
     </div>
-    <div id="piechart" style="width: 900px; height: 500px;"></div>
-  </body>
+    <p class="dateline"><a href="https://github.com/mozilla-firefox/firefox">mozilla-firefox/firefox</a> repository statistics on <span id="title-date">…</span></p>
+    <p class="headline" id="headline"></p>
+  </header>
+
+  <div class="tabs" role="tablist" id="tabs" aria-label="Views"></div>
+  <div id="panel" class="panel" role="tabpanel"><p class="note">Loading data…</p></div>
+
+  <section class="about" aria-labelledby="about-h">
+    <h2 id="about-h">About the numbers</h2>
+    <ul id="about">
+      <li>Lines in the files tracked by git, by file extension, at each major release tag and at the current head of the
+        default branch. Header files (<code>.h</code>) are split between C and C++ by a fixed ratio
+        (<span id="split">18.5% C, 81.5% C++</span>).</li>
+      <li>Desktop only: <code>mobile/</code> is excluded from every series.</li>
+      <li>Non-test files: the test-detection rules were written for today's tree. Older trees used other directory names,
+        so non-test values for older releases are less reliable.</li>
+      <li>Browser artifact: the source files built into the Linux x86-64 desktop browser, plus the JavaScript, HTML and CSS
+        packed into it. Assembly is not covered there and is shown as "not counted". Releases without this data are left
+        as gaps, never zeros.</li>
+      <li id="tag-note" hidden></li>
+      <li>The numbers behind the page: <a href="data.json">data.json</a>.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+'use strict';
+/* ---------- constants and state ---------- */
+const LANGS = [
+  { k: 'C++', name: 'C++', c: '--s1' }, { k: 'Rust', name: 'Rust', c: '--s2' }, { k: 'C', name: 'C', c: '--s3' },
+  { k: 'JavaScript', name: 'JavaScript', c: '--s4' }, { k: 'HTML', name: 'HTML/CSS', c: '--s5' },
+  { k: 'Python', name: 'Python', c: '--s6' }, { k: 'Java', name: 'Java', c: '--s7' }, { k: 'Assembly', name: 'Assembly', c: '--s8' }
+];
+const VIEWS = [
+  { k: 'all', name: 'All files', long: 'All tracked files' },
+  { k: 'nontest', name: 'Non-test files', long: 'Non-test files' },
+  { k: 'artifact', name: 'Browser artifact', long: 'Browser artifact (Linux x86-64)' }
+];
+const TABS = [
+  { k: 'comp', name: 'Composition', title: 'What Firefox is made of' },
+  { k: 'multi', name: 'Small multiples', title: 'One chart per language' },
+  { k: 'share', name: 'Language share', title: null },
+  { k: 'pie', name: 'Pie + scrubber', title: 'One release at a time' }
+];
+const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'html', 'py', 'java', 'asm'];
+const st = { tab: 'comp', view: 'nontest', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
+let D = null;          // display data, built from data.json
+let HAS = {};          // view key -> has any data
+
+/* ---------- helpers ---------- */
+const css = n => 'var(' + n + ')';
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const svgEl = (p, tag, attrs) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (p) p.appendChild(e); return e; };
+const pct = d => d == null ? '–' : (d > 0 && d < 0.01 ? (d * 100).toFixed(2) : (d * 100).toFixed(1)) + '%';
+const lines = n => n == null ? '–' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(Math.round(n));
+const exact = n => n == null ? '–' : Math.round(n).toLocaleString('en-US');
+const axisFmt = t => t === 0 ? '0' : d3.format('~s')(t);
+const viewOf = k => VIEWS.find(v => v.k === k);
+const langOf = k => LANGS.find(l => l.k === k);
+const notCounted = (view, k) => view === 'artifact' && k === 'Assembly';
+
+/* ---------- data: data.json -> display structure ---------- */
+function convert(b, split) {
+  if (!b || typeof b !== 'object') return null;
+  for (const k of RAW_KEYS) if (typeof b[k] !== 'number' || !isFinite(b[k])) return null;   // an incomplete record is a gap
+  const o = { 'C++': b.cpp + b.h * split.cpp, Rust: b.rust, C: b.c + b.h * split.c, JavaScript: b.js, HTML: b.html,
+              Python: b.py, Java: b.java, Assembly: b.asm };
+  o.total = LANGS.reduce((a, L) => a + o[L.k], 0);
+  return o.total > 0 ? o : null;
+}
+function build(data) {
+  if (!data || !Array.isArray(data.releases)) throw new Error('data.json has no "releases" list');
+  const hs = data.header_split || {};
+  const split = { c: typeof hs.c === 'number' ? hs.c : 0.185, cpp: typeof hs.cpp === 'number' ? hs.cpp : 0.815 };
+  const rel = data.releases.filter(r => r && Number.isFinite(+r.v)).slice().sort((a, b) => a.v - b.v);
+  const pts = rel.map(r => ({ v: +r.v, label: String(r.v), title: 'Firefox ' + r.v, tag: r.tag, date: r.date, head: false,
+    views: { all: convert(r.all, split), nontest: convert(r.nontest, split), artifact: convert(r.artifact, split) } }));
+  if (data.head && typeof data.head === 'object') {
+    const h = data.head;
+    pts.push({ v: null, label: 'head', title: 'Head' + (h.date ? ' (' + h.date + ')' : ''), date: h.date, sha: h.sha, head: true,
+      views: { all: convert(h.all, split), nontest: convert(h.nontest, split), artifact: convert(h.artifact, split) } });
+  }
+  if (!pts.length) throw new Error('data.json has no releases');
+  return { pts, N: pts.length, LAST: pts.length - 1, split, data };
+}
+const rec = (view, i) => D.pts[i].views[view];
+const val = (view, k, i) => { const r = rec(view, i); return r ? r[k] : null; };
+const share = (view, k, i) => { const r = rec(view, i); return r ? r[k] / r.total : null; };
+const total = (view, i) => { const r = rec(view, i); return r ? r.total : null; };
+const firstIdx = view => D.pts.findIndex(p => p.views[view] != null);
+const lastIdx = view => { for (let i = D.LAST; i >= 0; i--) if (D.pts[i].views[view]) return i; return -1; };
+const lab = i => D.pts[i].label;
+const ttl = i => D.pts[i].title;
+const isolated = (arr, j) => arr[j] != null && (j === 0 || arr[j - 1] == null) && (j === arr.length - 1 || arr[j + 1] == null);
+const cellVal = (view, k, i, isS) => notCounted(view, k) && rec(view, i) ? 'not counted' : isS ? pct(share(view, k, i)) : exact(val(view, k, i));
+
+/* ---------- shared chart parts ---------- */
+function xDomain(f0) { return f0 < D.LAST ? [f0, D.LAST] : [f0 - 1, f0]; }
+function xAxis(svg, x, y0, W, right) {
+  const [a, b] = x.domain(), lo = Math.max(0, Math.ceil(a)), span = Math.abs(x(b) - x(a)) || 1;
+  const rel = []; for (let i = lo; i <= b; i++) if (!D.pts[i].head) rel.push(i);
+  let ticks = [];
+  for (const s of [1, 2, 5, 10, 20, 25, 50, 100]) { ticks = rel.filter(i => D.pts[i].v % s === 0); if (ticks.length <= Math.max(2, span / 48)) break; }
+  if (!ticks.length && rel.length) ticks = [rel[0]];
+  const hi = D.pts.findIndex(p => p.head);
+  if (hi >= lo && hi <= b) { const lt = ticks[ticks.length - 1]; if (lt == null || x(hi) - x(lt) >= 40) ticks.push(hi); }
+  for (const i of ticks) {
+    const px = x(i), t = svgEl(svg, 'text', { x: px, y: y0, 'text-anchor': px > right - 14 ? 'end' : 'middle' });
+    t.textContent = lab(i);
+  }
+}
+function tipShow(wrap, x, y, title, rows) {
+  let t = wrap.querySelector('.tip');
+  if (!t) { t = el('div', 'tip'); wrap.appendChild(t); }
+  t.textContent = '';
+  t.appendChild(el('div', 't', title));
+  for (const r of rows) {
+    const row = el('div', 'r');
+    const k = el('span', 'k'); k.style.borderTopColor = r.color; if (r.dash) k.style.borderTopStyle = 'dashed';
+    row.appendChild(k); row.appendChild(el('span', 'n', r.name)); row.appendChild(el('span', 'v', r.value));
+    t.appendChild(row);
+  }
+  const w = wrap.clientWidth, tw = t.offsetWidth;
+  t.style.left = Math.max(0, Math.min(w - tw, x + 14 > w - tw ? x - tw - 14 : x + 14)) + 'px';
+  t.style.top = Math.max(0, y - 20) + 'px';
+}
+function tipHide(wrap) { const t = wrap.querySelector('.tip'); if (t) t.remove(); }
+function idxFrom(svg, x, W, e, lo) {
+  const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width);
+  return Math.max(Math.max(0, lo), Math.min(D.LAST, Math.round(x.invert(px))));
+}
+function crosshairKeys(svg, lo, hover, leave) {
+  let ki = D.LAST;
+  svg.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') ki = Math.max(lo, ki - 1); else if (e.key === 'ArrowRight') ki = Math.min(D.LAST, ki + 1); else return;
+    e.preventDefault(); hover(ki);
+  });
+  svg.addEventListener('blur', leave);
+}
+
+/* ---------- controls ---------- */
+function seg(label, opts, cur, on) {
+  const g = el('div', 'ctl');
+  if (label) g.appendChild(el('span', 'lab', label));
+  const s = el('div', 'seg'); s.setAttribute('role', 'group'); s.setAttribute('aria-label', label || 'options');
+  for (const o of opts) {
+    const b = el('button', null, o.name); b.type = 'button'; b.setAttribute('aria-pressed', String(o.k === cur));
+    if (o.disabled) { b.disabled = true; b.title = o.why || ''; }
+    else if (o.title) b.title = o.title;
+    b.onclick = () => on(o.k); s.appendChild(b);
+  }
+  g.appendChild(s); return g;
+}
+const viewSeg = () => seg('View', VIEWS.map(v => ({ k: v.k, name: v.name, title: v.long,
+  disabled: !HAS[v.k], why: 'No browser-artifact data yet' })), st.view, k => { st.view = k; render(); });
+function legend(isolate) {
+  const lg = el('div', 'legend');
+  for (const L of LANGS) {
+    const b = el(isolate ? 'button' : 'span', isolate ? null : 'it');
+    const sw = el('span', 'sw'); sw.style.background = css(L.c); b.appendChild(sw); b.appendChild(document.createTextNode(L.name));
+    if (isolate) { b.type = 'button'; b.setAttribute('aria-pressed', String(st.iso === L.k)); b.onclick = () => { st.iso = st.iso === L.k ? null : L.k; render(); }; b.title = 'Click to isolate'; }
+    lg.appendChild(b);
+  }
+  return lg;
+}
+
+/* ---------- 1. Composition: stacked areas ---------- */
+function drawStack(wrap) {
+  wrap.textContent = '';
+  const view = st.view, f0 = firstIdx(view), keys = LANGS.map(l => l.k), isS = st.mode === 'share';
+  const W = Math.max(300, wrap.clientWidth), H = W < 520 ? 300 : 380;
+  const m = { t: 14, r: W < 520 ? 14 : 120, b: 30, l: 46 };
+  const rows = [];
+  for (let i = f0; i <= D.LAST; i++) {
+    const ok = rec(view, i) != null, o = { i, ok };
+    keys.forEach(k => o[k] = ok ? (isS ? share(view, k, i) : val(view, k, i)) : 0);
+    rows.push(o);
+  }
+  const stack = d3.stack().keys(keys)(rows);
+  const maxY = isS ? 1 : d3.max(rows, r => r.ok ? total(view, r.i) : 0);
+  const svg = svgEl(wrap, 'svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Language composition by release, ' + viewOf(view).long, tabindex: 0 });
+  const x = d3.scaleLinear().domain(xDomain(f0)).range([m.l, W - m.r]);
+  const y = d3.scaleLinear().domain([0, maxY]).range([H - m.b, m.t]).nice();
+  for (const t of y.ticks(5)) {
+    svgEl(svg, 'line', { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: css('--grid') });
+    const tx = svgEl(svg, 'text', { x: m.l - 8, y: y(t) + 4, 'text-anchor': 'end' }); tx.textContent = isS ? Math.round(t * 100) + '%' : axisFmt(t);
+  }
+  xAxis(svg, x, H - 8, W, W - m.r);
+  const area = d3.area().defined(d => d.data.ok).x(d => x(d.data.i)).y0(d => y(d[0])).y1(d => y(d[1]));
+  const okArr = rows.map(r => r.ok ? 1 : null);
+  stack.forEach((s, j) => {
+    const L = LANGS[j], op = st.iso && st.iso !== L.k ? .22 : 1;
+    svgEl(svg, 'path', { d: area(s) || '', fill: css(L.c), stroke: css('--bg'), 'stroke-width': 1.5, opacity: op });
+    s.forEach((d, r) => { if (isolated(okArr, r)) svgEl(svg, 'rect', { x: x(d.data.i) - 3, width: 6, y: y(d[1]), height: Math.max(0, y(d[0]) - y(d[1])), fill: css(L.c), stroke: css('--bg'), 'stroke-width': 1, opacity: op }); });
+  });
+  let li = rows.length - 1; while (li >= 0 && !rows[li].ok) li--;
+  if (W >= 520 && li >= 0) stack.forEach((s, j) => {
+    const lst = s[li], mid = (y(lst[0]) + y(lst[1])) / 2, th = Math.abs(y(lst[0]) - y(lst[1]));
+    if (th < 15) return;
+    const t = svgEl(svg, 'text', { x: W - m.r + 8, y: mid + 4, class: 'strong' }); t.textContent = LANGS[j].name + ' ' + (isS ? pct(lst[1] - lst[0]) : lines(lst[1] - lst[0]));
+  });
+  svgEl(svg, 'line', { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: css('--axis') });
+  const cross = svgEl(svg, 'line', { y1: m.t, y2: H - m.b, stroke: css('--ink'), visibility: 'hidden' });
+  const overlay = svgEl(svg, 'rect', { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent', style: 'cursor:crosshair' });
+  const hover = i => {
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+    if (!rec(view, i)) { tipShow(wrap, x(i), m.t + 40, ttl(i), [{ color: css('--axis'), name: 'No data in this view', value: '' }]); return; }
+    const rs = LANGS.slice().reverse().map(L => ({ color: css(L.c), name: L.name,
+      value: notCounted(view, L.k) ? 'not counted' : pct(share(view, L.k, i)) + ' · ' + exact(val(view, L.k, i)) }));
+    tipShow(wrap, x(i), m.t + 40, ttl(i) + ' · ' + exact(total(view, i)) + ' lines', rs);
+  };
+  const leave = () => { cross.setAttribute('visibility', 'hidden'); tipHide(wrap); };
+  overlay.addEventListener('pointermove', e => hover(idxFrom(svg, x, W, e, f0)));
+  overlay.addEventListener('pointerleave', leave);
+  crosshairKeys(svg, f0, hover, leave);
+}
+
+/* ---------- 2. Small multiples ---------- */
+function drawMultiples(wrap) {
+  wrap.textContent = '';
+  const view = st.view, f0 = firstIdx(view), li = lastIdx(view), isS = st.dmode === 'share';
+  const V = (k, i) => notCounted(view, k) ? null : isS ? share(view, k, i) : val(view, k, i), F = isS ? pct : lines;
+  const head = (k, i) => !rec(view, i) ? 'no data' : notCounted(view, k) ? 'not counted' : F(V(k, i));
+  const grid = el('div', 'mini-grid'); wrap.appendChild(grid);
+  const panels = [];
+  for (const L of LANGS) {
+    const box = el('div', 'mini' + (L.k === 'Rust' ? ' hl' : '')); grid.appendChild(box);
+    const hd = el('div', 'hd'); const vv = el('span', 'val', head(L.k, li)); hd.appendChild(el('span', 'nm', L.name)); hd.appendChild(vv); box.appendChild(hd);
+    const cw = el('div', 'chartwrap'); box.appendChild(cw);
+    const W = Math.max(180, Math.round(cw.clientWidth) || 230), H = 92, m = { l: 2, r: 6, t: 16, b: 16 };
+    const svg = svgEl(cw, 'svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': L.name + (isS ? ' share' : ' lines') + ' by release' });
+    const x = d3.scaleLinear().domain(xDomain(f0)).range([m.l, W - m.r]);
+    const maxS = d3.max(D.pts, (_, i) => V(L.k, i) || 0) || 0;
+    const y = d3.scaleLinear().domain([0, Math.max(maxS, 1e-9) * 1.08]).range([H - m.b, m.t]);
+    svgEl(svg, 'line', { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: css('--axis') });
+    const tm = svgEl(svg, 'text', { x: W - m.r, y: 10, 'text-anchor': 'end' }); tm.textContent = notCounted(view, L.k) ? '' : 'peak ' + F(maxS);
+    const pts = []; for (let i = f0; i <= D.LAST; i++) pts.push([i, V(L.k, i)]);
+    const def = d => d[1] != null;
+    svgEl(svg, 'path', { d: d3.area().defined(def).x(d => x(d[0])).y0(y(0)).y1(d => y(d[1]))(pts) || '', fill: css(L.c), opacity: .18 });
+    svgEl(svg, 'path', { d: d3.line().defined(def).x(d => x(d[0])).y(d => y(d[1]))(pts) || '', fill: 'none', stroke: css(L.c), 'stroke-width': L.k === 'Rust' ? 2.5 : 1.75, 'stroke-linejoin': 'round' });
+    const ys = pts.map(p => p[1]);
+    pts.forEach((p, j) => { if (isolated(ys, j)) svgEl(svg, 'circle', { cx: x(p[0]), cy: y(p[1]), r: 2.5, fill: css(L.c) }); });
+    const t0 = svgEl(svg, 'text', { x: x(Math.max(0, x.domain()[0])), y: H - 3 }); t0.textContent = lab(Math.max(0, Math.ceil(x.domain()[0])));
+    const t1 = svgEl(svg, 'text', { x: W - m.r, y: H - 3, 'text-anchor': 'end' }); t1.textContent = lab(D.LAST);
+    const cross = svgEl(svg, 'line', { y1: m.t, y2: H - m.b, stroke: css('--ink2'), visibility: 'hidden' });
+    const dot = svgEl(svg, 'circle', { r: 4, fill: css(L.c), stroke: css('--bg'), 'stroke-width': 2, visibility: 'hidden' });
+    const ov = svgEl(svg, 'rect', { x: m.l, y: 0, width: W - m.l - m.r, height: H - m.b, fill: 'transparent', style: 'cursor:crosshair' });
+    panels.push({ L, vv, cross, dot, x, y });
+    ov.addEventListener('pointermove', e => { const i = idxFrom(svg, x, W, e, f0); panels.forEach(p => p.upd(i)); });
+    ov.addEventListener('pointerleave', () => panels.forEach(p => p.upd(null)));
+  }
+  panels.forEach(p => p.upd = i => {
+    if (i == null) { p.cross.setAttribute('visibility', 'hidden'); p.dot.setAttribute('visibility', 'hidden'); p.vv.textContent = head(p.L.k, li); return; }
+    p.cross.setAttribute('x1', p.x(i)); p.cross.setAttribute('x2', p.x(i)); p.cross.setAttribute('visibility', 'visible');
+    const v = V(p.L.k, i);
+    if (v == null) p.dot.setAttribute('visibility', 'hidden');
+    else { p.dot.setAttribute('cx', p.x(i)); p.dot.setAttribute('cy', p.y(v)); p.dot.setAttribute('visibility', 'visible'); }
+    p.vv.textContent = lab(i) + ' · ' + head(p.L.k, i);
+  });
+  wrap.appendChild(el('p', 'cap', 'Each panel has its own vertical scale starting at zero; compare sizes by the numbers, not the heights. Values at ' + (li >= 0 ? ttl(li) : '–') + '.'));
+}
+
+/* ---------- 3. Language share: one language, three series ---------- */
+const SERIES = [
+  { k: 'nontest', name: 'Non-test files', short: 'Non-test', w: 2.75, dash: null },
+  { k: 'all', name: 'All tracked files', short: 'All files', w: 1.75, dash: null },
+  { k: 'artifact', name: 'Browser artifact (Linux x86-64)', short: 'Artifact', w: 2.25, dash: '6 4' }
+];
+function seriesKey() {
+  const lg = el('div', 'legend'), col = css(langOf(st.lang).c);
+  for (const s of SERIES) {
+    const it = el('span', 'it'), ln = el('span', 'ln');
+    ln.style.borderTopColor = col; ln.style.borderTopWidth = s.w + 'px'; if (s.dash) ln.style.borderTopStyle = 'dashed';
+    it.appendChild(ln); it.appendChild(document.createTextNode(s.name + (HAS[s.k] ? '' : ': no data yet')));
+    lg.appendChild(it);
+  }
+  return lg;
+}
+function drawLangShare(wrap) {
+  wrap.textContent = '';
+  const lang = st.lang, LL = langOf(lang), col = css(LL.c), isS = st.ascale === 'share';
+  const V = (vk, i) => notCounted(vk, lang) ? null : isS ? share(vk, lang, i) : val(vk, lang, i), F = isS ? pct : lines;
+  const W = Math.max(300, wrap.clientWidth), H = W < 520 ? 280 : 340;
+  const m = { t: 14, r: W < 520 ? 64 : 150, b: 30, l: 46 };
+  const svg = svgEl(wrap, 'svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': LL.name + (isS ? ' share' : ' lines') + ' by release in three series', tabindex: 0 });
+  const x = d3.scaleLinear().domain(xDomain(0)).range([m.l, W - m.r]);
+  const maxv = d3.max(SERIES, s => d3.max(D.pts, (_, i) => V(s.k, i) || 0)) || 0;
+  const y = d3.scaleLinear().domain([0, Math.max(maxv, 1e-9) * 1.1]).range([H - m.b, m.t]).nice();
+  const dec = y.domain()[1] < 0.06 ? 1 : 0;
+  for (const t of y.ticks(5)) {
+    svgEl(svg, 'line', { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: css('--grid'), 'stroke-width': 1 });
+    const tx = svgEl(svg, 'text', { x: m.l - 8, y: y(t) + 4, 'text-anchor': 'end' }); tx.textContent = isS ? (t * 100).toFixed(dec) + '%' : axisFmt(t);
+  }
+  xAxis(svg, x, H - 8, W, W - m.r);
+  svgEl(svg, 'line', { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: css('--axis') });
+  const ln = d3.line().defined(d => d[1] != null).x(d => x(d[0])).y(d => y(d[1]));
+  const labels = [];
+  for (const s of SERIES) {
+    const pts = D.pts.map((_, i) => [i, V(s.k, i)]), on = s.k === 'nontest', ys = pts.map(p => p[1]);
+    const p = svgEl(svg, 'path', { d: ln(pts) || '', fill: 'none', stroke: col, 'stroke-width': on ? s.w + 1 : s.w, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: on ? 1 : .6 });
+    if (s.dash) p.setAttribute('stroke-dasharray', s.dash);
+    pts.forEach((q, j) => { if (isolated(ys, j)) svgEl(svg, 'circle', { cx: x(q[0]), cy: y(q[1]), r: 3.5, fill: 'none', stroke: col, 'stroke-width': 2, opacity: on ? 1 : .8 }); });
+    let li = D.LAST; while (li >= 0 && ys[li] == null) li--;
+    if (li >= 0) labels.push({ y: y(ys[li]), name: s.short, v: ys[li], on });
+  }
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 15) labels[i].y = labels[i - 1].y + 15;
+  for (const l of labels) {
+    const t = svgEl(svg, 'text', { x: W - m.r + 8, y: l.y + 4, class: l.on ? 'strong' : '' });
+    t.textContent = (W < 520 ? '' : l.name + ' ') + F(l.v);
+  }
+  const cross = svgEl(svg, 'line', { y1: m.t, y2: H - m.b, stroke: css('--ink2'), 'stroke-width': 1, visibility: 'hidden' });
+  const dots = SERIES.map(() => svgEl(svg, 'circle', { r: 4.5, fill: col, stroke: css('--bg'), 'stroke-width': 2, visibility: 'hidden' }));
+  const hover = i => {
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+    const rows = SERIES.map((s, j) => {
+      const v = V(s.k, i);
+      if (v == null) { dots[j].setAttribute('visibility', 'hidden'); return { color: col, dash: !!s.dash, name: s.name, value: notCounted(s.k, lang) && rec(s.k, i) ? 'not counted' : 'no data' }; }
+      dots[j].setAttribute('cx', x(i)); dots[j].setAttribute('cy', y(v)); dots[j].setAttribute('visibility', 'visible');
+      return { color: col, dash: !!s.dash, name: s.name, value: pct(share(s.k, lang, i)) + ' · ' + exact(val(s.k, lang, i)) };
+    });
+    tipShow(wrap, x(i), m.t + 30, ttl(i) + ' · ' + LL.name, rows);
+  };
+  const leave = () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tipHide(wrap); };
+  const overlay = svgEl(svg, 'rect', { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent', style: 'cursor:crosshair' });
+  overlay.addEventListener('pointermove', e => hover(idxFrom(svg, x, W, e, 0)));
+  overlay.addEventListener('pointerleave', leave);
+  crosshairKeys(svg, 0, hover, leave);
+}
+
+/* ---------- 4. Pie with a release scrubber ---------- */
+function drawPie(wrap, i) {
+  wrap.textContent = '';
+  const view = st.view;
+  if (!rec(view, i)) {
+    wrap.appendChild(el('div', 'nodata', 'No ' + viewOf(view).long + ' data for ' + ttl(i) + '. Move the slider to a release that has it.'));
+    return;
+  }
+  const S = 280, r = 124;
+  const grid = el('div', 'pie-grid'); wrap.appendChild(grid);
+  const left = el('div', 'chartwrap'); grid.appendChild(left);
+  const svg = svgEl(left, 'svg', { viewBox: `0 0 ${S} ${S}`, role: 'img', 'aria-label': 'Language share of ' + ttl(i) + ', ' + viewOf(view).long });
+  const g = svgEl(svg, 'g', { transform: `translate(${S / 2},${S / 2})` });
+  const arcs = d3.pie().sort(null).value(d => d.v)(LANGS.map(L => ({ L, v: val(view, L.k, i) })));
+  const arc = d3.arc().innerRadius(0).outerRadius(r);
+  for (const a of arcs) {
+    const p = svgEl(g, 'path', { d: arc(a), fill: css(a.data.L.c), stroke: css('--bg'), 'stroke-width': 2 });
+    p.addEventListener('pointermove', e => { const b = left.getBoundingClientRect(); tipShow(left, e.clientX - b.left, e.clientY - b.top, ttl(i), [{ color: css(a.data.L.c), name: a.data.L.name, value: pct(share(view, a.data.L.k, i)) + ' · ' + exact(a.data.v) }]); });
+    p.addEventListener('pointerleave', () => tipHide(left));
+  }
+  const right = el('div'); grid.appendChild(right);
+  const pi = i > 0 && rec(view, i - 1) ? i - 1 : null;
+  const t = el('table', 'data');
+  const hd = el('tr'); ['Language', 'Share', 'Lines', 'Change'].forEach(h => hd.appendChild(el('th', null, h))); t.appendChild(hd);
+  for (const L of LANGS) {
+    const tr = el('tr'), c0 = el('td'), sw = el('span');
+    sw.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;background:var(' + L.c + ')';
+    c0.appendChild(sw); c0.appendChild(document.createTextNode(L.name)); tr.appendChild(c0);
+    if (notCounted(view, L.k)) { const td = el('td', 'mono gap', 'not counted'); td.colSpan = 3; tr.appendChild(td); t.appendChild(tr); continue; }
+    tr.appendChild(el('td', 'mono', pct(share(view, L.k, i)))); tr.appendChild(el('td', 'mono', exact(val(view, L.k, i))));
+    let dd = '–';
+    if (pi != null) { const d = (share(view, L.k, i) - share(view, L.k, pi)) * 100; const a = Math.abs(d).toFixed(1); dd = (+a === 0 ? '±' : d > 0 ? '+' : '−') + a + ' pp'; }
+    tr.appendChild(el('td', 'mono', dd)); if (L.k === 'Rust') tr.style.fontWeight = 600; t.appendChild(tr);
+  }
+  const tr = el('tr'); tr.appendChild(el('td', null, 'Total')); tr.appendChild(el('td', 'mono', '100%')); tr.appendChild(el('td', 'mono', exact(total(view, i)))); tr.appendChild(el('td'));
+  t.appendChild(tr);
+  right.appendChild(t);
+  right.appendChild(el('p', 'cap', pi != null ? 'Change: percentage points against ' + ttl(pi) + '.'
+    : i > 0 ? 'Change: no data for ' + ttl(i - 1) + ' in this view.' : 'Change: this is the first release.'));
+}
+function stopPlay() { if (st.playing) { clearInterval(st.playing); st.playing = null; } }
+function pieScrubber(host, redraw) {
+  const bar = el('div', 'scrub');
+  const lbl = el('div'); const vb = el('div', 'vbig'); const vs = el('div', 'vsub'); lbl.appendChild(vb); lbl.appendChild(vs); bar.appendChild(lbl);
+  const rng = el('input'); rng.type = 'range'; rng.min = 0; rng.max = D.LAST; rng.value = st.sel; rng.setAttribute('aria-label', 'Release');
+  const play = el('button', 'play', 'Play'); play.type = 'button';
+  const show = i => { vb.textContent = D.pts[i].head ? 'Head' : 'Firefox ' + D.pts[i].v; vs.textContent = D.pts[i].date || ''; rng.setAttribute('aria-valuetext', ttl(i)); };
+  const set = i => { st.sel = i; rng.value = i; show(i); redraw(i); };
+  rng.oninput = () => set(+rng.value);
+  play.onclick = () => {
+    if (st.playing) { stopPlay(); play.textContent = 'Play'; return; }
+    if (st.sel >= D.LAST) set(Math.max(0, firstIdx(st.view)));
+    play.textContent = 'Pause';
+    st.playing = setInterval(() => { if (st.sel >= D.LAST) { stopPlay(); play.textContent = 'Play'; return; } set(st.sel + 1); }, 140);
+  };
+  bar.appendChild(rng); bar.appendChild(play); host.appendChild(bar); show(st.sel);
+}
+
+/* ---------- data tables: every value reachable without hovering ---------- */
+function details(summary, buildTable) {
+  const d = el('details', 'dsum'); d.open = st.tableOpen; d.addEventListener('toggle', () => { st.tableOpen = d.open; });
+  d.appendChild(el('summary', null, summary));
+  const sc = el('div', 'scroll'), t = el('table', 'data'); sc.appendChild(t); buildTable(t); d.appendChild(sc);
+  return d;
+}
+function viewTable(isS) {
+  const v = viewOf(st.view);
+  return details('Show the data as a table (' + v.long + ', ' + (isS ? 'share' : 'lines') + ')', t => {
+    const hd = el('tr'); hd.appendChild(el('th', null, 'Release')); LANGS.forEach(L => hd.appendChild(el('th', null, L.name))); hd.appendChild(el('th', null, 'Total lines')); t.appendChild(hd);
+    for (let i = D.LAST; i >= 0; i--) {
+      const tr = el('tr'); tr.appendChild(el('td', 'mono', lab(i)));
+      if (!rec(st.view, i)) { const td = el('td', 'mono gap', 'no data'); td.colSpan = LANGS.length + 1; td.style.textAlign = 'center'; tr.appendChild(td); }
+      else { LANGS.forEach(L => tr.appendChild(el('td', 'mono', cellVal(st.view, L.k, i, isS)))); tr.appendChild(el('td', 'mono', exact(total(st.view, i)))); }
+      t.appendChild(tr);
+    }
+  });
+}
+function langTable() {
+  const LL = langOf(st.lang), isS = st.ascale === 'share';
+  return details('Show the data as a table (' + LL.name + ', ' + (isS ? 'share' : 'lines') + ')', t => {
+    const hd = el('tr'); ['Release'].concat(SERIES.map(s => s.name)).forEach(h => hd.appendChild(el('th', null, h))); t.appendChild(hd);
+    for (let i = D.LAST; i >= 0; i--) {
+      const tr = el('tr'); tr.appendChild(el('td', 'mono', lab(i)));
+      SERIES.forEach(s => { const ok = rec(s.k, i) != null; tr.appendChild(el('td', 'mono' + (ok ? '' : ' gap'), ok ? cellVal(s.k, st.lang, i, isS) : 'no data')); });
+      t.appendChild(tr);
+    }
+  });
+}
+
+/* ---------- page ---------- */
+function panel() {
+  const P = document.getElementById('panel'); P.textContent = '';
+  P.setAttribute('aria-labelledby', 'tab-' + st.tab);
+  const T = TABS.find(t => t.k === st.tab);
+  P.appendChild(el('h2', null, st.tab === 'share' ? 'How much ' + langOf(st.lang).name + '?' : T.title));
+  const c = el('div', 'controls'); P.appendChild(c);
+  const host = el('div'); P.appendChild(host);
+  if (st.tab === 'share') {
+    c.appendChild(seg('Language', LANGS.map(l => ({ k: l.k, name: l.name })), st.lang, k => { st.lang = k; render(); }));
+    c.appendChild(seg('Scale', [{ k: 'share', name: 'Share' }, { k: 'lines', name: 'Lines' }], st.ascale, k => { st.ascale = k; render(); }));
+    host.appendChild(seriesKey());
+    const w = el('div', 'chartwrap'); host.appendChild(w); drawLangShare(w);
+    P.appendChild(langTable());
+    return;
+  }
+  c.appendChild(viewSeg());
+  if (st.tab === 'comp') {
+    c.appendChild(seg('Scale', [{ k: 'share', name: 'Share' }, { k: 'lines', name: 'Lines' }], st.mode, k => { st.mode = k; render(); }));
+    host.appendChild(legend(true)); const w = el('div', 'chartwrap'); host.appendChild(w); drawStack(w);
+    P.appendChild(viewTable(st.mode === 'share'));
+  } else if (st.tab === 'multi') {
+    c.appendChild(seg('Scale', [{ k: 'share', name: 'Share' }, { k: 'lines', name: 'Lines' }], st.dmode, k => { st.dmode = k; render(); }));
+    host.appendChild(legend(false)); const w = el('div'); host.appendChild(w); drawMultiples(w);
+    P.appendChild(viewTable(st.dmode === 'share'));
+  } else {
+    const w = el('div'); pieScrubber(host, i => drawPie(w, i)); host.appendChild(w); drawPie(w, st.sel);
+    P.appendChild(viewTable(true));
+  }
+}
+function tabs() {
+  const T = document.getElementById('tabs'); T.textContent = '';
+  for (const t of TABS) {
+    const b = el('button', 'tab', t.name); b.type = 'button'; b.id = 'tab-' + t.k; b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(st.tab === t.k)); b.setAttribute('aria-controls', 'panel');
+    b.onclick = () => { st.tab = t.k; st.iso = null; render(); };
+    T.appendChild(b);
+  }
+}
+function render() {
+  stopPlay();
+  if (!HAS[st.view]) st.view = HAS.nontest ? 'nontest' : 'all';
+  tabs(); panel();
+}
+
+function fail(msg) {
+  document.getElementById('tabs').textContent = '';
+  const P = document.getElementById('panel'); P.textContent = '';
+  const n = el('p', 'note err'); n.textContent = msg; P.appendChild(n);
+  document.getElementById('title-date').textContent = '–';
+}
+function header() {
+  const data = D.data;
+  if (data.title_date) document.getElementById('title-date').textContent = data.title_date;
+  if (data.meta_date) document.querySelector('meta[name="date"]').setAttribute('content', data.meta_date);
+  const sp = D.split; document.getElementById('split').textContent = (sp.c * 100).toFixed(1) + '% C, ' + (sp.cpp * 100).toFixed(1) + '% C++';
+  const odd = D.pts.filter(p => !p.head && p.tag && !/_0_RELEASE$/.test(p.tag));
+  if (odd.length) {
+    const li = document.getElementById('tag-note'); li.hidden = false;
+    li.textContent = odd.map(p => 'Release ' + p.v + ' has no release tag; it is counted at ' + p.tag + '.').join(' ');
+  }
+  const i = lastIdx('nontest'), j = lastIdx('all'), k = lastIdx('artifact');
+  if (i >= 0) {
+    const where = D.pts[i].head ? 'At the current head' : 'In ' + ttl(i);
+    let s = where + ', Rust is <b>' + pct(share('nontest', 'Rust', i)) + '</b> of non-test lines';
+    if (j === i) s += ' and <b>' + pct(share('all', 'Rust', j)) + '</b> of all tracked lines';
+    if (k === i) s += ', and <b>' + pct(share('artifact', 'Rust', k)) + '</b> of the browser artifact';
+    document.getElementById('headline').innerHTML = s + '.';
+  }
+}
+
+async function main() {
+  if (typeof d3 === 'undefined') { fail('The chart library (d3) did not load. Check the network connection or any content blocker, then reload the page.'); return; }
+  let data;
+  try {
+    const res = await fetch('data.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    data = await res.json();
+    D = build(data);
+  } catch (e) {
+    fail('Could not load the data (data.json): ' + e.message + '. Try reloading the page.');
+    return;
+  }
+  for (const v of VIEWS) HAS[v.k] = D.pts.some(p => p.views[v.k] != null);
+  if (!HAS.all && !HAS.nontest) { fail('data.json contains no usable release records.'); return; }
+  st.sel = D.LAST;
+  header();
+  render();
+  let lastW = document.getElementById('panel').clientWidth, rz;
+  window.addEventListener('resize', () => {
+    clearTimeout(rz);
+    rz = setTimeout(() => {
+      const w = document.getElementById('panel').clientWidth;
+      if (w === lastW) return;
+      lastW = w;
+      if (st.tab !== 'pie') panel();
+    }, 150);
+  });
+}
+main();
+</script>
+</body>
 </html>

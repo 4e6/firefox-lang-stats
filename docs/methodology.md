@@ -85,7 +85,7 @@ be counted; there are no such files outside `mobile/` at `00a4d527`).
 
 Everything else is left out, both from the language lines and from the total that shares are computed against.
 Measured for this document at `00a4d527` outside `mobile/`, some sizeable uncounted source extensions (examples, not
-a complete ranking; `moz.build` files, for instance, hold 230,981 lines and `.idl` files 131,262):
+a complete ranking; the 2,849 `moz.build` files, for instance, hold 227,495 lines and `.idl` files 131,262):
 
 | Extension | Files | Lines |
 |---|---:|---:|
@@ -138,8 +138,9 @@ How the rules were made and checked:
   **non-test values for older releases are less reliable**. No release other than 157 was checked against a second
   method.
 - A second implementation as git pathspecs (`docs/reference/test-paths/build-data-pathspec.sh`) gave 21.4-21.45%
-  Rust on `main`, against 21.35% from the Python rules on the 157 tag: about 0.1 point apart, on different commits,
-  so not an exact match. The two forms are close but not identical (the pathspec script has no `.mjs`, keeps
+  Rust on `main`, against 21.35% from the Python rules on the 157 tag, both with `mobile/` included (with it
+  excluded, as on the site, the Python rules give 21.45% at 157): about 0.1 point apart, on different commits, so
+  not an exact match. The two forms are close but not identical (the pathspec script has no `.mjs`, keeps
   `mobile/`, and matches `jsapi-tests` and `jit-test` only under `js/src/`).
 - Detecting tests from test manifests (mochitest, xpcshell and similar) was tried and rejected: it misses 4.4M lines
   of tests.
@@ -160,7 +161,7 @@ build outputs (Firefox is never built here), plus the JavaScript, HTML and CSS *
    `https://archive.mozilla.org/pub/firefox/candidates/<v>.0-candidates/build<N>/linux-x86_64/en-US/` are given by
    hand to `history.py set-artifact`; the rule is to use the last `build<N>` (157: `build1`, the only one).
    Choosing them automatically is part of Task 6.
-2. **Read the package once.** The build's package (`target.tar.xz`, or `firefox-<v>.0.tar.xz` for a release) is
+2. **Read the package once.** The build's package (`target.tar.xz`, or `firefox-<v>.0.tar.xz` for a release; `.tar.bz2` for older releases) is
    streamed once. For every ELF file it reads the GNU build id from the headers at the start of the file; for every `omni.ja`
    (`omni.ja` and `browser/omni.ja`) it counts the newlines of the `.js`, `.mjs`, `.jsm`, `.jsx`, `.css`, `.html`,
    `.htm`, `.xhtml` and `.xht` files inside.
@@ -243,7 +244,7 @@ no finished build, its 15-minute limit in the workflow, even a bug), `head.artif
 ## The weekly pipeline
 
 `.github/workflows/deploy.yml` runs every Sunday at 22:12 UTC, on every push to `main`, on pull requests and by hand.
-One job, at most one run at a time per branch, 30-minute limit:
+One job, at most one run at a time per ref (a pull-request run never waits for or cancels one on `main`), 30-minute limit:
 
 1. **Test:** `python3 -m unittest discover -s dev` (no network).
 2. **Append:** `history.py append data/history.json --repo firefox` lists the remote release tags
@@ -350,13 +351,13 @@ machine that made them (see `data/artifact-files/README.md`).
 | Check | Result | Where recorded |
 |---|---|---|
 | Backfill against the measurements of the first prototype (an earlier version of the same counter, so not independent; without the `mobile/` exclusion) | 0 mismatches in 222 release-views, 111 releases by two views (Rust, JavaScript, HTML, Python, Java and Assembly exact; C and C++ exact after the old split); release 125 was not in that series | `docs/implementation-plan.md`, "Verified reference results" |
-| Non-test rules in Python against a git-pathspec version of them | 21.35% (157 tag) against 21.4-21.45% (`main`): about 0.1 point, different commits | `docs/reference/test-paths/README.md` |
-| Appending a release against recounting it | Removing 157, and separately 123 (zero timestamp), then running `append` gave byte-identical files (a local simulation; the weekly job has not yet appended a real new release, 158 will be the first) | pull request #18 |
+| Non-test rules in Python against a git-pathspec version of them | 21.35% (157 tag) against 21.4-21.45% (`main`), both with `mobile/` included (the site, without it, shows 21.45% at 157): about 0.1 point, different commits | `docs/reference/test-paths/README.md` |
+| Appending a release against recounting it | Removing 157, and separately 123 (zero timestamp), then running `append` gave byte-identical files (a local simulation; the weekly job has not yet appended a real new release, 158 will be the first) | [pull request #18](https://github.com/4e6/firefox-lang-stats/pull/18) |
 | Browser artifact, release 157 | 11,853,915 lines, Rust 16.30%, 19,289 paths, 26 modules; the research expected about 16-17% Rust, about 2.0M Rust lines and 19,000-20,000 paths | `docs/implementation-plan.md`, Task 5 |
-| Browser artifact, head build `0b3661d5` | 12,235,473 lines, Rust 16.69%, 19,978 paths, 0 missing in the tree, no JavaScript, HTML or assembly path in the symbols | pull requests #19 and #20 |
-| JavaScript inside `omni.ja`, 157 | 1,001,575 + 980,367 lines, the same as `unzip` and the research | pull request #20 |
+| Browser artifact, head build `0b3661d5` | 12,235,473 lines, Rust 16.69%, 19,978 paths, 0 missing in the tree, no JavaScript, HTML or assembly path in the symbols | pull requests [#19](https://github.com/4e6/firefox-lang-stats/pull/19) and [#20](https://github.com/4e6/firefox-lang-stats/pull/20) |
+| JavaScript inside `omni.ja`, 157 | 1,001,575 + 980,367 lines, the same as `unzip` and the research | [pull request #20](https://github.com/4e6/firefox-lang-stats/pull/20) |
 | Release 157 against the nightly build | Rust 1.93M against 2.04M lines, C++ 5.44M against 5.57M (old split): the method is stable across builds; that does not make it exact | `docs/shipped-code-research.md` |
-| The artifact's Rust share against the other views, 2026-10-05 | All files 12.78% and non-test 21.54% at `00a4d527`; artifact 16.69% at build `0b3661d5`, 72 commits later: between the two | pull request #19 |
+| The artifact's Rust share against the other views, 2026-10-05 | All files 12.78% and non-test 21.54% at `00a4d527`; artifact 16.69% at build `0b3661d5`, 72 commits later: between the two | [pull request #19](https://github.com/4e6/firefox-lang-stats/pull/19) |
 | Saved symbol lists (45 versions) | Every path exists in the release tag's tree (0 missing; 136.0.4 has no git tag and was checked against the 136.0.3 tree); the `libxul.so` revision equals the tag's hg node | `data/artifact-files/README.md` |
 
 ## Known limitations and biases
@@ -369,13 +370,15 @@ machine that made them (see `data/artifact-files/README.md`).
 - **About 8 repository files are dropped by `#line` directives.** Some generated-looking files are attributed by
   `#line` directives to names in the build's object directory, so their `FILE` records are dropped as absolute paths:
   the sqlite amalgamation `third_party/sqlite3/ext/fts5.c`, five harfbuzz headers (four `hb-ot-shaper-*-machine.hh`
-  and `hb-number-parser.hh`) and two angle `*_lex_autogen.cpp` files. At 143.0.4 that was 38,592 lines, under 1% (review of pull request
-  #17). `dev/artifact.py` uses the same rules, so the 157 and head artifacts miss these files too; that was not
+  and `hb-number-parser.hh`) and two angle `*_lex_autogen.cpp` files. At 143.0.4 that was 38,592 lines, under 1% (review of [pull request
+  #17](https://github.com/4e6/firefox-lang-stats/pull/17)). `dev/artifact.py` uses the same rules, so the 157 and head artifacts miss these files too; that was not
   re-measured for them.
 - **Mixed revisions in the saved lists.** The symbol server keeps one file per debug id, so a module that came out
-  byte-identical from another build carries that build's revision (131.0.2 has 5 revisions; review of pull request
-  #17). Every path still exists at the release's own tag (136.0.4: at the 136.0.3 tag, as it has no git tag of its
-  own), but the current counter requires a single revision, so Task 6 will need a rule for these.
+  byte-identical from another build carries that build's revision (131.0.2 has 5 revisions; review of [pull request
+  #17](https://github.com/4e6/firefox-lang-stats/pull/17)). Every path still exists at the release's own tag (136.0.4: at the 136.0.3 tag, as it has no git tag of its
+  own), but the current counter requires a single revision, so Task 6 will need a rule for these. The lists are
+  also from the hg era (`hg:hg.mozilla.org/...` records, releases up to 146), and the counter's `build_sha` accepts
+  only `git:github.com/mozilla-firefox/firefox` records with a 40-hex sha, so it needs hg handling there too.
 - **Symbols expire.** About two years after a build (inferred); Taskcluster keeps build artifacts for about a year.
   Older release artifacts will depend on the `candidates/` zips (49 to 129, 144 onwards) and on the saved lists for
   131.0.2 to 143. 130.0, 130.0.1, 131.0, 46 and 48 have no symbols anywhere; 47 only has a 47.0.2 zip, which has no
@@ -411,7 +414,7 @@ It does not say:
 | Date | Change | Effect |
 |---|---|---|
 | 2018 to 2026-10-05 | The original chart (`dev/build-data`): `git ls-files` and `wc -l` at the head only, no `.mjs`, `mobile/` included, headers split 1/3 C to 2/3 C++, labelled "SLOC" | One pie for the current head |
-| 2026-10-05 | `method_version` 1 (pull request #16): one counter for every release and the head; `.mjs` counted; `mobile/` excluded; non-test view added; headers stored raw and split 18.5% / 81.5%; 112 major releases backfilled | All existing numbers changed; the old `lang` figures are not comparable |
-| 2026-10-05 | Weekly append of new releases and the four-view page (pull request #18) | No change to counts |
-| 2026-10-05 | Browser artifact view: the head every run, release 157 stored (pull requests #19 and #20) | New view; tracked counts unchanged |
+| 2026-10-05 | `method_version` 1 ([pull request #16](https://github.com/4e6/firefox-lang-stats/pull/16)): one counter for every release and the head; `.mjs` counted; `mobile/` excluded; non-test view added; headers stored raw and split 18.5% / 81.5%; 112 major releases backfilled | All existing numbers changed; the old `lang` figures are not comparable |
+| 2026-10-05 | Weekly append of new releases and the four-view page ([pull request #18](https://github.com/4e6/firefox-lang-stats/pull/18)) | No change to counts |
+| 2026-10-05 | Browser artifact view: the head every run, release 157 stored (pull requests [#19](https://github.com/4e6/firefox-lang-stats/pull/19) and [#20](https://github.com/4e6/firefox-lang-stats/pull/20)) | New view; tracked counts unchanged |
 | 2026-10-05 | This document, published with the site as `methodology.html` | No change to counts |

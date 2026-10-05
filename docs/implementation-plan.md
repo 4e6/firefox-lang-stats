@@ -246,7 +246,7 @@ recomputed each run.
 Checks: Rust about 16-17% of the artifact total for Firefox 157 (2.0M Rust lines, 5.6M C++, 2.3M C, 1.8-2.0M JavaScript, from the research);
 the file list for the release has 19,000-20,000 paths; the job still succeeds with the artifact step disabled.
 
-Status (2026-10-05): done. The head artifact is computed by `build-site --with-artifact` in the weekly job (null on any
+Status (2026-10-05): implemented in #20, not yet live. The head artifact is computed by `build-site --with-artifact` in the weekly job (null on any
 failure). Release 157 was filled once with `history.py set-artifact` from `157.0-candidates/build1`: 11,853,915 lines,
 Rust 1,931,822 (16.30%), C++ 5.71M and C 2.01M after the header split, JavaScript 1.98M, 19,289 paths. The head at
 mozilla-central build `0b3661d5` gave 12,235,473 lines, Rust 2,041,650 (16.69%). Release builds pack `omni.ja` as an

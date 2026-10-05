@@ -225,8 +225,9 @@ const ttl = i => D.pts[i].title;
 const isolated = (arr, j) => arr[j] != null && (j === 0 || arr[j - 1] == null) && (j === arr.length - 1 || arr[j + 1] == null);
 const sha7 = s => (s || '').slice(0, 7);
 // The head's artifact is counted at the build's own commit, usually a little older than the head commit.
-const artNote = i => { const p = D.pts[i]; return p.head && p.asha && rec('artifact', i) && p.asha !== p.sha
-  ? 'Browser artifact counted at the latest finished mozilla-central build, commit ' + sha7(p.asha) + ' (the head is ' + sha7(p.sha) + ').' : null; };
+const artNote = i => { const p = D.pts[i]; if (!p.head || !p.asha || !rec('artifact', i)) return null;
+  return 'Browser artifact counted at the latest finished mozilla-central build, commit ' + sha7(p.asha)
+    + (p.asha === p.sha ? ' (the same commit as the head).' : ' (the head is ' + sha7(p.sha) + ').'); };
 const artNoteFor = (view, i) => view === 'artifact' ? artNote(i) : null;
 // a point drawn as a marker: alone, or in a run of two (a two-point line is too short to see on a long axis)
 const shortRun = (arr, j) => { if (arr[j] == null) return false; let a = j, b = j;

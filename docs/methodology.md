@@ -342,14 +342,13 @@ and by 70,346 at 79 and falls by 110,629 at 151.
   repository (Android Components, Fenix, Focus) was merged into mozilla-central on 2024-03-18 (Bug 1822248, commit
   `3b8cd5f81382`). Release 125 is counted at `FIREFOX_125_0_BUILD1`, whose branch was cut about an hour before the
   merge, so no 125 tag could include it. Java barely moves (278,159 to 279,504).
-- **Java/Kotlin as one series.** Because of the Java and Kotlin steps at 71 and 126, the combined Java/Kotlin series in All files falls at
-  71 and rises at 126. In Browser files the series is small (127,821 lines, 0.5% of the view at 157) but not flat:
-  Android code outside `mobile/` counts there. Besides the WebRTC SDK step at 71 (-22,724), it doubles at 155
-  (64,480 to 127,535 lines), when 62,985 lines of generated Kotlin bindings arrived under
-  `toolkit/components/uniffi-bindgen-gecko-js/android/` (64,014 lines with their tests, most of the +65,004 step
-  in All files at 155).
-  Other steps of similar size to the one at 71 are not explained here: +15,978 at 56, +20,078 at 96, +11,943 at 106,
-  -9,357 at 48 and -8,119 at 113.
+- **Java/Kotlin as one series.** Because of the Java and Kotlin steps at 71 and 126, the combined Java/Kotlin series
+  in All files falls at 71 and rises at 126. In Browser files the series is small (127,821 lines, 0.5% of the view at
+  157) but not flat: Android code outside `mobile/` counts there. Besides the WebRTC SDK step at 71 (-22,724), it
+  doubles at 155 (64,480 to 127,535 lines), when 62,985 lines of generated Kotlin bindings arrived under
+  `toolkit/components/uniffi-bindgen-gecko-js/android/` (64,014 lines with their tests, most of the +65,004 step in All
+  files at 155). Other steps of similar size to the one at 71 are not explained here: +15,978 at 56, +20,078 at 96,
+  +11,943 at 106, -9,357 at 48 and -8,119 at 113.
 - **Release 131, HTML/CSS.** In Browser files HTML/CSS falls from 277,082 to 157,219 lines (-119,863). The update of
   FreeType to 2.13.3 (Bug 1912903, commit `4f64bf65d3d0`) removed `modules/freetype2/docs/`, all 137 files, among them
   FreeType's API reference in HTML (`docs/reference/`): 110,073 HTML/CSS lines (and 7,298 JavaScript lines). The new

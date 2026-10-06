@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
   schedule:
-    # run every Sunday at 22:12 UTC
+    # every Sunday at 22:12 UTC (GitHub often starts scheduled runs late)
     - cron: '12 22 * * 0'
 
 permissions:
@@ -62,6 +62,8 @@ jobs:
           site = json.load(open('build/data.json'))
           hist = json.load(open('data/history.json'))
           assert site['releases'] == hist['releases'], 'releases differ from data/history.json'
+          vs = [r['v'] for r in hist['releases']]
+          assert vs and vs[0] == 46 and vs == list(range(46, vs[-1] + 1)), 'releases are not 46..%s without gaps or repeats: missing %s' % (vs[-1] if vs else None, sorted(set(range(46, max(vs, default=46) + 1)) - set(vs)))
           assert site['method_version'] == hist['method_version'] == 4, 'method_version is not 4'
           assert site['browser_excluded_prefixes'] == hist['browser_excluded_prefixes'], 'browser_excluded_prefixes differ'
           assert hist['browser_excluded_prefixes'] == ['mobile/', 'build/clang-plugin/', 'build/pgo/', 'docs/', 'python/', 'taskcluster/', 'third_party/node/', 'third_party/python/', 'tools/@types/', 'tools/lint/', 'tools/tryselect/'], 'browser_excluded_prefixes: %s' % hist['browser_excluded_prefixes']

@@ -1,4 +1,6 @@
 """Tests for dev/render_docs.py (no network). Run: python3 -m unittest discover -s dev"""
+import contextlib
+import io
 import os
 import re
 import sys
@@ -143,12 +145,17 @@ class Page(unittest.TestCase):
             src, out = os.path.join(d, 'a.md'), os.path.join(d, 'a.html')
             with open(src, 'w') as f:
                 f.write('# A\n\n**ok**\n')
-            self.assertEqual(rd.main([src, '--page', PAGE, '--out', out]), 0)
+            stdout, stderr = io.StringIO(), io.StringIO()   # main() reports to the console; keep the test run quiet
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                self.assertEqual(rd.main([src, '--page', PAGE, '--out', out]), 0)
+            self.assertIn('wrote %s' % out, stdout.getvalue())
             with open(out, encoding='utf-8') as f:
                 self.assertIn('<strong>ok</strong>', f.read())
             with open(src, 'w') as f:
                 f.write('# A\n\n> no\n')
-            self.assertEqual(rd.main([src, '--page', PAGE, '--out', os.path.join(d, 'b.html')]), 1)
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                self.assertEqual(rd.main([src, '--page', PAGE, '--out', os.path.join(d, 'b.html')]), 1)
+            self.assertIn('line 3', stderr.getvalue())
             self.assertFalse(os.path.exists(os.path.join(d, 'b.html')))
 
 

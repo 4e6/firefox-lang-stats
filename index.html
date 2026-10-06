@@ -165,15 +165,15 @@ const VIEWS = [
   { k: 'browser', name: 'Browser files' }
 ];
 const TABS = [
+  { k: 'pie', name: 'Pie', title: 'One release at a time' },
   { k: 'comp', name: 'Composition', title: 'What Firefox is made of' },
   { k: 'multi', name: 'Small multiples', title: 'One chart per language' },
-  { k: 'share', name: 'Language share', title: null },
-  { k: 'pie', name: 'Pie', title: 'One release at a time' }
+  { k: 'share', name: 'Language share', title: null }
 ];
 const RAW_KEYS = ['rust', 'c', 'h', 'cpp', 'js', 'ts', 'html', 'py', 'java', 'kt', 'asm'];   // only these are summed
 // A series with `parts` sums several data keys (JavaScript/TypeScript, Java/Kotlin): the palette has eight slots and
 // no ninth colour is made. The data keeps the parts apart; tooltips and tables show them.
-const st = { tab: 'comp', view: 'browser', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
+const st = { tab: 'pie', view: 'browser', mode: 'share', dmode: 'share', ascale: 'share', lang: 'Rust', iso: null, sel: 0, playing: null, tableOpen: false };
 let D = null;          // display data, built from data.json
 let HAS = {};          // view key -> has any data
 

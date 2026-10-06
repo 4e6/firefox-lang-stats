@@ -3,12 +3,12 @@
 How much Rust in Firefox? See the page [here][gh-pages].
 
 The page shows how the language mix of the [mozilla-firefox/firefox] repository changed across major releases, from
-Firefox 46 to the current head of the default branch. It has four tabs:
+Firefox 46 to the current head of the default branch. It has four tabs, the first (Pie) open by default:
 
+- **Pie**: one release at a time, with the change against the previous one.
 - **Composition**: share (or lines) of every language per release, stacked.
 - **Small multiples**: one chart per language.
 - **Language share**: one language over time, one line per view.
-- **Pie**: one release at a time, with the change against the previous one.
 
 Each tab offers two views: **All files** (every tracked file, `mobile/` included) and **Browser files** (the same
 without `mobile/`, without ten build and developer tooling directories such as `python/`, `third_party/python/`,

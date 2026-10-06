@@ -16,11 +16,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js" integrity="sha384-su5kReKyYlIFrI62mbQRKXHzFobMa7BHp1cK6julLPbnYcCW9NIZKJiTODjLPeDh" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 /* Series colours are the validated categorical slots in fixed order (C++ blue, Rust orange, C aqua,
-   JavaScript/TypeScript yellow, HTML/CSS magenta, Python green, Java/Kotlin violet, Assembly red). Light and dark tokens; data-theme overrides the system. */
+   JavaScript/TypeScript yellow, HTML/CSS magenta, Python green, Java/Kotlin violet, Assembly red). Light and dark tokens; data-theme overrides the system.
+   --ctl is the border of the controls (segmented buttons, (?), Play): at least 3:1 against --bg and --chip (WCAG non-text contrast). */
 /* tokens:begin */ /* also copied into methodology.html by dev/render_docs.py */
 :root {
   --bg: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #6b6a64;
-  --grid: #e9e8e3; --axis: #c9c8c2; --hair: #dddcd6; --chip: #f1f0ec;
+  --grid: #e9e8e3; --axis: #c9c8c2; --hair: #dddcd6; --chip: #f1f0ec; --ctl: #8a8983;
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
   --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -28,14 +29,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1a1a19; --ink: #ffffff; --ink2: #c3c2b7; --muted: #a09f95;
-    --grid: #2b2b29; --axis: #4a4a46; --hair: #363633; --chip: #262624;
+    --grid: #2b2b29; --axis: #4a4a46; --hair: #363633; --chip: #262624; --ctl: #72716b;
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #1a1a19; --ink: #ffffff; --ink2: #c3c2b7; --muted: #a09f95;
-  --grid: #2b2b29; --axis: #4a4a46; --hair: #363633; --chip: #262624;
+  --grid: #2b2b29; --axis: #4a4a46; --hair: #363633; --chip: #262624; --ctl: #72716b;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
   color-scheme: dark;
 }
@@ -63,12 +64,11 @@ h1 { font-size: 26px; line-height: 1.15; margin: 0; font-weight: 600; text-wrap:
 .panel h2 { font-size: 18px; margin: 0 0 10px; font-weight: 600; }
 .controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 12px; }
 .ctl { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 0; min-width: 0; }
-.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--axis); border-radius: 6px; overflow: hidden; max-width: 100%; }
-.seg button { font: inherit; font-size: 13px; background: none; color: var(--ink2); border: 0; padding: 5px 10px; cursor: pointer; border-right: 1px solid var(--axis); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--ctl); border-radius: 6px; overflow: hidden; max-width: 100%; }
+.seg button { font: inherit; font-size: 13px; background: none; color: var(--ink2); border: 0; padding: 5px 10px; cursor: pointer; border-right: 1px solid var(--ctl); }
 .seg button:last-child { border-right: 0; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
-.seg button:not([aria-pressed="true"]):not(:disabled):hover { background: var(--chip); }
-.seg button:disabled { color: var(--muted); opacity: .55; cursor: not-allowed; text-decoration: line-through; text-decoration-thickness: 1px; }
+.seg button:not([aria-pressed="true"]):hover { background: var(--chip); }
 .lab { font-size: 12px; color: var(--muted); margin-right: 6px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .05em; }
 .chartwrap { position: relative; min-width: 0; }
 .chartwrap svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -83,7 +83,7 @@ svg .strong { fill: var(--ink); font-weight: 500; }
 .tip .sub { color: var(--muted); font-family: var(--mono); font-size: 11px; padding-left: 22px; line-height: 1.4; white-space: nowrap; }
 .tip .nt { color: var(--muted); margin-top: 4px; max-width: 240px; line-height: 1.4; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 8px; }
-.legend button, .legend span.it { font: inherit; font-size: 12px; display: inline-flex; gap: 6px; align-items: center; background: none; border: 0; padding: 2px 0; color: var(--ink2); }
+.legend button:not(.help), .legend span.it { font: inherit; font-size: 12px; display: inline-flex; gap: 6px; align-items: center; background: none; border: 0; padding: 2px 0; color: var(--ink2); }
 .legend button { cursor: pointer; }
 .legend .sw { width: 12px; height: 12px; border-radius: 2px; }
 .legend .ln { width: 22px; height: 0; border-top-style: solid; }
@@ -95,7 +95,7 @@ svg .strong { fill: var(--ink); font-weight: 500; }
 .vsub { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .scrub { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .scrub input[type=range] { flex: 1; min-width: 160px; accent-color: var(--ink); }
-.play { font: inherit; font-size: 13px; padding: 5px 12px; border: 1px solid var(--axis); background: none; color: var(--ink); border-radius: 6px; cursor: pointer; }
+.play { font: inherit; font-size: 13px; padding: 5px 12px; border: 1px solid var(--ctl); background: none; color: var(--ink); border-radius: 6px; cursor: pointer; }
 .play:hover { background: var(--chip); }
 table.data { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 table.data th, table.data td { text-align: right; vertical-align: baseline; padding: 4px 8px; border-bottom: 1px solid var(--hair); font-variant-numeric: tabular-nums; }
@@ -117,7 +117,7 @@ table.data td:first-child .sub { padding-left: 18px; }   /* under the name, past
 .mini.hl { border-top: 2px solid var(--s2); }
 .panel { position: relative; }
 .help { font: inherit; font-family: var(--mono); font-size: 11px; font-weight: 500; line-height: 1; width: 20px; height: 20px;
-  padding: 0; margin-left: 8px; border: 1px solid var(--axis); border-radius: 50%; background: none; color: var(--ink2); cursor: pointer;
+  padding: 0; margin-left: 8px; border: 1px solid var(--ctl); border-radius: 50%; background: none; color: var(--ink2); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .help:hover, .help[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); background: var(--chip); }
 .legend .help { margin-left: 0; }
@@ -128,7 +128,7 @@ table.data td:first-child .sub { padding-left: 18px; }   /* under the name, past
 .vhelp p { margin: 0 0 6px; }
 .vhelp p:last-child { margin-bottom: 0; }
 .vhelp b { color: var(--ink); font-weight: 600; }
-.vhelp code { font-family: var(--mono); font-size: 12px; }
+.vhelp code { font-family: var(--mono); font-size: 12px; white-space: nowrap; }   /* a path never breaks inside */
 .pfoot { margin: 0; border-top: 1px solid var(--hair); padding-top: 10px; color: var(--muted); font-size: 12px; }
 @media (max-width: 760px) { .pie-grid { grid-template-columns: 1fr; } h1 { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -161,8 +161,8 @@ const LANGS = [
   { k: 'Java', name: 'Java/Kotlin', c: '--s7', parts: [['Java', 'java'], ['Kotlin', 'kt']] }, { k: 'Assembly', name: 'Assembly', c: '--s8' }
 ];
 const VIEWS = [
-  { k: 'all', name: 'All files', long: 'All tracked files' },
-  { k: 'browser', name: 'Browser files', long: 'Browser files' }
+  { k: 'all', name: 'All files' },
+  { k: 'browser', name: 'Browser files' }
 ];
 const TABS = [
   { k: 'comp', name: 'Composition', title: 'What Firefox is made of' },
@@ -289,13 +289,11 @@ function seg(label, opts, cur, on) {
   const s = el('div', 'seg'); s.setAttribute('role', 'group'); s.setAttribute('aria-label', label || 'options');
   for (const o of opts) {
     const b = el('button', null, o.name); b.type = 'button'; b.setAttribute('aria-pressed', String(o.k === cur));
-    if (o.disabled) { b.disabled = true; b.title = o.why || ''; }
-    else if (o.title) b.title = o.title;
     b.onclick = () => on(o.k); s.appendChild(b);
   }
   g.appendChild(s); return g;
 }
-const viewSeg = () => { const g = seg('View', VIEWS.map(v => ({ k: v.k, name: v.name, title: v.long })), st.view,
+const viewSeg = () => { const g = seg('View', VIEWS, st.view,
   k => { st.view = k; render(); }); helpButton(g); return g; };
 
 /* ---------- the (?) next to the view switch: what the two views count ---------- */
@@ -312,7 +310,7 @@ function helpFill(pop) {
   const sp = D.split, f = v => (v * 100).toFixed(1) + '%';
   pop.appendChild(para([['b', 'All files'], ': every file tracked by git at the release tag (or the current head), counted by file extension, ',
     ['code', 'mobile/'], ' included. Lines are newline counts, not lines of code.']));
-  pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (mostly Android code), minus build tooling and vendored Python/Node tooling (',
+  pop.appendChild(para([['b', 'Browser files'], ': the same minus ', ['code', 'mobile/'], ' (mostly Android code), minus build tooling, vendored tooling and docs (',
     ['code', 'python/'], ', ', ['code', 'third_party/python/'], ', ', ['code', 'third_party/node/'], ', ', ['code', 'taskcluster/'], ', ',
     ['code', 'tools/lint/'], ', ', ['code', 'tools/tryselect/'], ', ', ['code', 'tools/@types/'], ', ', ['code', 'build/clang-plugin/'], ', ',
     ['code', 'build/pgo/'], ', ', ['code', 'docs/'], '), and minus files matched by the test rules. '
@@ -320,7 +318,7 @@ function helpFill(pop) {
   pop.appendChild(para(['Header files (', ['code', '.h'], ') are split between C and C++ by a fixed ratio: ' + f(sp.c) + ' C, ' + f(sp.cpp)
     + ' C++; ', ['code', '.hpp'], ' and ', ['code', '.hh'], ' count as C++, ', ['code', '.S'], ' and ', ['code', '.s'], ' as Assembly. '
     + 'TypeScript (', ['code', '.ts'], ') is shown together with JavaScript, and Kotlin (', ['code', '.kt'], ') with Java. '
-    + 'Binary files (any file with a NUL byte) count 0 lines. Releases without data are gaps, never zeros. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
+    + 'Binary files (any file with a NUL byte) count 0 lines. How the numbers are made: ', ['a', 'Methodology', 'methodology.html'], '.']));
 }
 function helpButton(host) {
   const btn = el('button', 'help', '?'); btn.type = 'button';
@@ -366,7 +364,7 @@ function drawStack(wrap) {
   }
   const stack = d3.stack().keys(keys)(rows);
   const maxY = isS ? 1 : d3.max(rows, r => r.ok ? total(view, r.i) : 0);
-  const svg = svgEl(wrap, 'svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Language composition by release, ' + viewOf(view).long, tabindex: 0 });
+  const svg = svgEl(wrap, 'svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Language composition by release, ' + viewOf(view).name, tabindex: 0 });
   const x = d3.scaleLinear().domain(xDomain(f0)).range([m.l, W - m.r]);
   const y = d3.scaleLinear().domain([0, maxY]).range([H - m.b, m.t]).nice();
   for (const t of y.ticks(5)) {
@@ -450,8 +448,8 @@ function drawMultiples(wrap) {
 
 /* ---------- 3. Language share: one language, two series ---------- */
 const SERIES = [
-  { k: 'browser', name: 'Browser files', short: 'Browser files', w: 2.75 },
-  { k: 'all', name: 'All tracked files', short: 'All files', w: 1.75 }
+  { k: 'browser', name: 'Browser files', w: 2.75 },
+  { k: 'all', name: 'All files', w: 1.75 }
 ];
 function seriesKey() {
   const lg = el('div', 'legend'), col = css(langOf(st.lang).c);
@@ -488,7 +486,7 @@ function drawLangShare(wrap) {
     svgEl(svg, 'path', { d: ln(pts) || '', fill: 'none', stroke: col, 'stroke-width': on ? s.w + 1 : s.w, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: on ? 1 : .6 });
     pts.forEach((q, j) => { if (shortRun(ys, j)) svgEl(svg, 'circle', { cx: x(q[0]), cy: y(q[1]), r: 3.5, fill: 'none', stroke: col, 'stroke-width': 2, opacity: on ? 1 : .8 }); });
     let li = D.LAST; while (li >= 0 && ys[li] == null) li--;
-    if (li >= 0) labels.push({ y: y(ys[li]), name: s.short, v: ys[li], on });
+    if (li >= 0) labels.push({ y: y(ys[li]), name: s.name, v: ys[li], on });
   }
   labels.sort((a, b) => a.y - b.y);
   for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 15) labels[i].y = labels[i - 1].y + 15;
@@ -520,13 +518,13 @@ function drawPie(wrap, i) {
   wrap.textContent = '';
   const view = st.view;
   if (!rec(view, i)) {
-    wrap.appendChild(el('div', 'nodata', 'No ' + viewOf(view).long + ' data for ' + ttl(i) + '. Move the slider to a release that has it.'));
+    wrap.appendChild(el('div', 'nodata', 'No ' + viewOf(view).name + ' data for ' + ttl(i) + '. Move the slider to a release that has it.'));
     return;
   }
   const S = 280, r = 124;
   const grid = el('div', 'pie-grid'); wrap.appendChild(grid);
   const left = el('div', 'chartwrap'); grid.appendChild(left);
-  const svg = svgEl(left, 'svg', { viewBox: `0 0 ${S} ${S}`, role: 'img', 'aria-label': 'Language share of ' + ttl(i) + ', ' + viewOf(view).long });
+  const svg = svgEl(left, 'svg', { viewBox: `0 0 ${S} ${S}`, role: 'img', 'aria-label': 'Language share of ' + ttl(i) + ', ' + viewOf(view).name });
   const g = svgEl(svg, 'g', { transform: `translate(${S / 2},${S / 2})` });
   const arcs = d3.pie().sort(null).value(d => d.v)(LANGS.map(L => ({ L, v: val(view, L.k, i) })));
   const arc = d3.arc().innerRadius(0).outerRadius(r);
@@ -565,7 +563,9 @@ function pieScrubber(host, redraw) {
   const lbl = el('div'); const vb = el('div', 'vbig'); const vs = el('div', 'vsub'); lbl.appendChild(vb); lbl.appendChild(vs); bar.appendChild(lbl);
   const rng = el('input'); rng.type = 'range'; rng.min = 0; rng.max = D.LAST; rng.value = st.sel; rng.setAttribute('aria-label', 'Release');
   const play = el('button', 'play', 'Play'); play.type = 'button';
-  const show = i => { vb.textContent = D.pts[i].head ? 'Head' : 'Firefox ' + D.pts[i].v; vs.textContent = D.pts[i].date || ''; rng.setAttribute('aria-valuetext', ttl(i)); };
+  // the stored date is the committer date of the counted commit, a few days before a release ships
+  const show = i => { vb.textContent = D.pts[i].head ? 'Head' : 'Firefox ' + D.pts[i].v; vs.textContent = D.pts[i].date ? 'commit date ' + D.pts[i].date : '';
+    rng.setAttribute('aria-valuetext', ttl(i)); };
   const set = i => { st.sel = i; rng.value = i; show(i); redraw(i); };
   rng.oninput = () => set(+rng.value);
   play.onclick = () => {
@@ -586,7 +586,7 @@ function details(summary, buildTable) {
 }
 function viewTable(isS) {
   const v = viewOf(st.view);
-  return details('Show the data as a table (' + v.long + ', ' + (isS ? 'share' : 'lines') + ')', t => {
+  return details('Show the data as a table (' + v.name + ', ' + (isS ? 'share' : 'lines') + ')', t => {
     const hd = el('tr'); hd.appendChild(el('th', null, 'Release')); LANGS.forEach(L => hd.appendChild(el('th', null, L.name))); hd.appendChild(el('th', null, 'Total lines')); t.appendChild(hd);
     for (let i = D.LAST; i >= 0; i--) {
       const tr = el('tr'); tr.appendChild(el('td', 'mono', lab(i)));
@@ -638,14 +638,26 @@ function panel() {
     P.appendChild(viewTable(true));
   }
 }
+function selectTab(k, focus) {
+  st.tab = k; st.iso = null; render();
+  if (focus) document.getElementById('tab-' + k).focus();   // render() rebuilt the buttons, dropping the focus
+}
 function tabs() {
   const T = document.getElementById('tabs'); T.textContent = '';
   for (const t of TABS) {
     const b = el('button', 'tab', t.name); b.type = 'button'; b.id = 'tab-' + t.k; b.setAttribute('role', 'tab');
     b.setAttribute('aria-selected', String(st.tab === t.k)); b.setAttribute('aria-controls', 'panel');
-    b.onclick = () => { st.tab = t.k; st.iso = null; render(); };
+    b.tabIndex = st.tab === t.k ? 0 : -1;   // roving tabindex: Tab reaches the selected tab, the arrow keys the others
+    b.onclick = () => selectTab(t.k, true);   // the clicked tab keeps the focus, so the arrow keys work next
     T.appendChild(b);
   }
+}
+// WAI-ARIA tabs, automatic activation: Left/Right (wrapping), Home and End select a tab and move the focus to it
+function tabKeys(e) {
+  const n = TABS.length, cur = TABS.findIndex(t => t.k === st.tab);
+  const to = { ArrowLeft: (cur - 1 + n) % n, ArrowRight: (cur + 1) % n, Home: 0, End: n - 1 }[e.key];
+  if (to == null || e.altKey || e.ctrlKey || e.metaKey || !e.target.matches('[role="tab"]')) return;
+  e.preventDefault(); selectTab(TABS[to].k, true);
 }
 function render() {
   stopPlay();
@@ -665,9 +677,10 @@ function header() {
   if (data.meta_date) document.querySelector('meta[name="date"]').setAttribute('content', data.meta_date);
   const i = lastIdx('browser'), j = lastIdx('all');
   if (i >= 0) {
-    const where = D.pts[i].head ? 'At the current head' : 'In ' + ttl(i);
+    // the head is the default branch when the data was built (weekly), not live: say which commit date it is
+    const p = D.pts[i], where = p.head ? 'At head' + (p.date ? ' (' + p.date + ')' : '') : 'In ' + ttl(i);
     const parts = ['<b>' + pct(share('browser', 'Rust', i)) + '</b> of the lines in Browser files'];
-    if (j === i) parts.push('<b>' + pct(share('all', 'Rust', j)) + '</b> of all tracked lines');
+    if (j === i) parts.push('<b>' + pct(share('all', 'Rust', j)) + '</b> of the lines in All files');
     document.getElementById('headline').innerHTML = where + ', Rust is ' + parts.join(' and ') + '.';
   }
 }
@@ -689,6 +702,7 @@ async function main() {
   st.sel = D.LAST;
   header();
   render();
+  document.getElementById('tabs').addEventListener('keydown', tabKeys);   // the tab list itself is never rebuilt
   // the help popover closes on Escape (focus back on its button) and on a press anywhere outside it and its button
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && help && help.open) { e.preventDefault(); setHelp(false, true); } });
   document.addEventListener('pointerdown', e => { if (help && help.open && !help.pop.contains(e.target) && !help.btn.contains(e.target)) setHelp(false); });

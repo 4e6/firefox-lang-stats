@@ -80,6 +80,10 @@ To regenerate `data/history.json` from scratch (run it locally, not in CI), foll
 (on a blobless clone with the release tags). Compare the result with the committed file whenever `method_version`
 changes.
 
+## License
+
+MIT, see [LICENSE](LICENSE).
+
 
 [mozilla-firefox/firefox]: https://github.com/mozilla-firefox/firefox
 [gh-pages]: https://4e6.github.io/firefox-lang-stats/

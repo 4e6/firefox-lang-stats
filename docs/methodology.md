@@ -342,7 +342,7 @@ and by 70,346 at 79 and falls by 110,629 at 151.
   repository (Android Components, Fenix, Focus) was merged into mozilla-central on 2024-03-18 (Bug 1822248, commit
   `3b8cd5f81382`). Release 125 is counted at `FIREFOX_125_0_BUILD1`, whose branch was cut about an hour before the
   merge, so no 125 tag could include it. Java barely moves (278,159 to 279,504).
-- **Java/Kotlin as one series.** Because of the two steps above, the combined Java/Kotlin series in All files falls at
+- **Java/Kotlin as one series.** Because of the Java and Kotlin steps at 71 and 126, the combined Java/Kotlin series in All files falls at
   71 and rises at 126. In Browser files the series is small (127,821 lines, 0.5% of the view at 157) but not flat:
   Android code outside `mobile/` counts there. Besides the WebRTC SDK step at 71 (-22,724), it doubles at 155
   (64,480 to 127,535 lines), when 62,985 lines of generated Kotlin bindings arrived under
@@ -354,8 +354,8 @@ and by 70,346 at 79 and falls by 110,629 at 151.
   FreeType to 2.13.3 (Bug 1912903, commit `4f64bf65d3d0`) removed `modules/freetype2/docs/`, all 137 files, among them
   FreeType's API reference in HTML (`docs/reference/`): 110,073 HTML/CSS lines (and 7,298 JavaScript lines). The new
   tab page's three per-platform style sheets (`activity-stream-linux.css`, `-mac.css` and `-windows.css` in
-  `browser/components/newtab/css/`) became one, `activity-stream.css` (-10,930 lines), and small changes elsewhere add
-  back 1,140. In All files web-platform-tests offset part of it: HTML/CSS falls by 84,151.
+  `browser/components/newtab/css/`) became one, `activity-stream.css` (-10,933 lines), and small changes elsewhere add
+  back 1,143. In All files web-platform-tests offset part of it: HTML/CSS falls by 84,151.
 - **Release 152, JavaScript/TypeScript.** In All files JavaScript/TypeScript grows from 12,676,181 to 15,605,903 lines
   (+2,929,722), and the JavaScript/TypeScript files of web-platform-tests from 6,868 to 60,453: web-platform-tests
   now vendors its own copy of test262, `testing/web-platform/tests/third_party/test262/` (53,482 JavaScript files,

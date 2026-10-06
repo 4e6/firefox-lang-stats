@@ -286,6 +286,7 @@ code { font-family: var(--mono); font-size: .86em; background: var(--chip); bord
 pre { background: var(--chip); border: 1px solid var(--hair); border-radius: 6px; padding: 10px 12px; overflow-x: auto;
       font-size: 12.5px; line-height: 1.5; }
 pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+td code, th code { overflow-wrap: normal; }   /* a path in a table breaks only at a space; a narrow table scrolls */
 .tw { overflow-x: auto; margin: 10px 0; border: 1px solid var(--hair); border-radius: 6px; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { text-align: left; vertical-align: top; padding: 5px 8px; border-bottom: 1px solid var(--hair);

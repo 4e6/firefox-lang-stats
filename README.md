@@ -27,8 +27,9 @@ for the subcommands, the language and test rules, and the release set.
 
 - `data/history.json` holds one record per major release (`FIREFOX_<n>_0_RELEASE`; 125 is counted at
   `FIREFOX_125_0_BUILD1`), one release per line. It is append-only: a stored release is never recounted.
-- The workflow `.github/workflows/deploy.yml` runs every Sunday at 22:12 UTC, on every push to `main`, on pull
-  requests and by hand (*Run workflow*). It checks out Firefox at depth 1 and then:
+- The workflow `.github/workflows/deploy.yml` is scheduled for every Sunday at 22:12 UTC (GitHub often starts
+  scheduled runs late, up to about 01:00 UTC on Monday so far; the methodology has the details) and also runs on every
+  push to `main`, on pull requests and by hand (*Run workflow*). It checks out Firefox at depth 1 and then:
   1. runs the unit tests;
   2. `history.py append` adds the releases missing from `data/history.json`, fetching each new tag at depth 1;
   3. `history.py build-site` counts the head of Firefox and writes `build/data.json`; the page (`site/index.html`)
@@ -79,6 +80,10 @@ python3 -m http.server -d build                                  # then open htt
 To regenerate `data/history.json` from scratch (run it locally, not in CI), follow `python3 dev/history.py --help`
 (on a blobless clone with the release tags). Compare the result with the committed file whenever `method_version`
 changes.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
 
 
 [mozilla-firefox/firefox]: https://github.com/mozilla-firefox/firefox

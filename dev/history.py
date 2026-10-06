@@ -50,8 +50,11 @@ rust .rs | c .c | cpp .cc .cpp .cxx .hxx .hpp .hh | h .h | js .jsm .jsx .js .mjs
 html .htm .html .xhtml .xht .css | py .py | java .java | kt .kt | asm .asm .S .s
 A blob that contains a NUL byte is binary and counts 0 lines (the .ts MPEG transport streams of the media tests,
 for example). Changing the set, the test rules, the binary rule or the views means bumping METHOD_VERSION and
-regenerating. v3 = v2 plus kt, ts, .hpp/.hh as cpp, .S/.s as asm and the binary rule; v4 = v3 plus the tooling
-prefixes above in BROWSER_EXCLUDED_PREFIXES ("all" is the same as in v3).
+regenerating. The versions so far (details in the git history of this repository):
+  1  the first backfill (mobile/ left out of every view)
+  2  the two views above, with mobile/ as the only excluded prefix ("all" now includes mobile/)
+  3  2 plus kt, ts, .hpp/.hh as cpp, .S/.s as asm and the binary rule
+  4  3 plus the tooling prefixes of BROWSER_EXCLUDED_PREFIXES ("all" is the same as in 3)
 
 How to regenerate data/history.json from scratch (about 10 minutes and 3.5 GB of disk; run it locally, not in CI):
 

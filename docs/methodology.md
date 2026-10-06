@@ -11,12 +11,10 @@ The page counts **lines in files**, grouped into ten languages by file extension
 from 46 to the newest one and for the current head of the default branch of
 [mozilla-firefox/firefox](https://github.com/mozilla-firefox/firefox). It offers two views of the same releases:
 
-| View | What is counted | Releases covered |
-|---|---|---|
-| All files | Every file tracked by git at the release tag (or the head) with a counted extension, `mobile/` included | Every major release from 46 and the head |
-| Browser files | The same files minus `mobile/` (mostly Android code), minus ten directories of build and developer tooling (vendored Python and Node packages included) and minus the files matched by the test rules | Every major release from 46 and the head |
-
-A release without data in a view is drawn as a gap, never as zero.
+| View | What is counted |
+|---|---|
+| All files | Every file tracked by git at the release tag (or the head) with a counted extension, `mobile/` included |
+| Browser files | The same files minus `mobile/` (mostly Android code), minus ten directories of build and developer tooling (vendored Python and Node packages included) and minus the files matched by the test rules |
 
 The charts combine two pairs of languages: **JavaScript and TypeScript as one series, JavaScript/TypeScript**, and
 **Java and Kotlin as one series, Java/Kotlin**, so they show eight series for the ten languages: the page has eight
@@ -31,10 +29,10 @@ Firefox 157 in Browser files, headers split as described below:
 | Rust | 5,613,873 | 22.0% |
 | C | 4,693,307 | 18.4% |
 | JavaScript/TypeScript (JavaScript 2,270,727, TypeScript 67,204) | 2,337,931 | 9.2% |
-| HTML/CSS | 182,925 | 0.7% |
-| Python | 319,029 | 1.3% |
-| Java/Kotlin (Java 55,497, Kotlin 72,324) | 127,821 | 0.5% |
 | Assembly | 531,363 | 2.1% |
+| Python | 319,029 | 1.3% |
+| HTML/CSS | 182,925 | 0.7% |
+| Java/Kotlin (Java 55,497, Kotlin 72,324) | 127,821 | 0.5% |
 | **Total** | **25,495,695** | **100%** |
 
 C and C++ include their share of the `.h` lines (fractional lines are rounded here). The Rust share is 22.02% before
@@ -122,7 +120,8 @@ approximate. The split moves lines between C and C++ only; the Rust share and th
 Every counted file at the commit, with no path excluded. This is the closest to what the original chart measured (that
 chart ran `git ls-files` and `wc -l` at the head, did not count `.mjs` and split headers 1/3 to 2/3). It is dominated
 by tests and test data: web-platform-tests (`testing/web-platform/tests/`, about 163,000 files at 157) and `test262`,
-which is vendored twice (`js/src/tests/test262/` and a copy inside web-platform-tests).
+which is vendored twice since 152 (`js/src/tests/test262/` and a copy inside web-platform-tests; see "Reading the
+series").
 
 ### Browser files
 
@@ -198,7 +197,9 @@ Limits of the test rules:
   timestamp (1970-01-01; `FIREFOX_123_0_RELEASE` is one); for those the date of the nearest first-parent ancestor
   with a real timestamp is stored. The weekly job fetches 10 more commits of such a tag to find it.
 - **x axis:** releases are placed one step apart in release order (by index, not by date); the head is one step after
-  the newest release. Dates appear next to the Pie view's release slider and in the data, not on the axis.
+  the newest release. Dates appear next to the Pie view's release slider (labelled "commit date"), in the headline and
+  tooltips for the head, and in the data, not on the axis. A release's commit date is usually a few days before its
+  public release: 2022-04-28 for release 100, which shipped on 2022-05-03.
 - **Immutability:** the weekly job never recounts a stored release; it only appends new ones.
 
 ## The head point
@@ -209,15 +210,20 @@ deployed `build/data.json`, never in `data/history.json`, because it changes eve
 
 ## The weekly pipeline
 
-`.github/workflows/deploy.yml` runs every Sunday at 22:12 UTC, on every push to `main`, on pull requests and by hand.
-One job, at most one run at a time per ref:
+`.github/workflows/deploy.yml` is scheduled for every Sunday at 22:12 UTC and also runs on every push to `main`, on
+pull requests and by hand. GitHub often starts scheduled runs late: the 59 scheduled runs from 2025-08-24 to
+2026-10-05 started between 22:18 and 00:53 UTC, the last five after 23:50, so a week's data can lag until early Monday
+(UTC). Those runs all ran the workflow of an earlier version of this repository with the same schedule; as of
+2026-10-06 the current workflow has not yet run on a schedule (the first is due on 2026-10-11). One job, at most one
+run at a time per ref:
 
 1. **Test:** `python3 -m unittest discover -s dev` (no network).
 2. **Append:** `history.py append` lists the remote release tags (`git ls-remote --tags`), and for each major
    missing from `data/history.json` fetches its tag at depth 1, counts it and appends one line.
 3. **Build:** `history.py build-site` counts the head and writes `build/data.json`; the page, its icons and this
    document (rendered to `methodology.html` by `dev/render_docs.py`) are added, and a check fails the step if an
-   output file is missing or empty or the site data does not match `data/history.json`.
+   output file is missing or empty, the site data does not match `data/history.json` or the stored releases are not
+   46, 47, 48 and so on without a gap.
 4. **Commit** (only on `main`, never for a pull request): if `data/` changed, commit `data: add releases` to `main`.
 5. **Deploy** (only on `main`, never for a pull request): publish `build/` to the `gh-pages` branch.
 
@@ -309,6 +315,16 @@ Some steps in the charts are real changes to the repository, not counting artefa
 here; others are not explained yet. For example, the Java/Kotlin series in All files rises by 105,340 lines at 55
 and by 70,346 at 79 and falls by 110,629 at 151.
 
+- **Release 54, Rust.** In Browser files Rust grows from 67,654 lines (0.60% of the view) to 785,871 (6.46%), and from
+  105 to 1,885 files: Servo and WebRender arrived in mozilla-central. Commit `5f7f5313de79` (Bug 1322769, "vendor
+  Servo") merged the servo/servo repository (minus its web-platform and ref tests) into `servo/`, all of it counted
+  whether or not Firefox builds it: +732 Rust files and +314,383 lines, of them 272,784 in `servo/components/` (`style`
+  123,206, `script` 82,418, `layout` 25,051) and 41,221 in `servo/ports/` (`cef` 37,952). WebRender came to
+  `gfx/webrender`, `gfx/webrender_traits` and `gfx/webrender_bindings` (45 files, 22,687 lines; Bug 1335525).
+  `third_party/rust/` grows by 1,003 files and 380,653 lines, 378,130 of them in 115 new crates: 48 crates (191,130
+  lines) came with WebRender's dependencies (commit `cbdf0c332f77`, Bug 1335525), 59 (170,784 lines) with Stylo's
+  (`geckolib`) dependencies (commit `b4ab990a0d87`, Bug 1336607) and 8 (16,216 lines) in other commits. In All files
+  Rust grows from 70,437 to 815,996 lines.
 - **Release 71, Java.** In All files Java falls from 551,092 to 161,770 lines: Fennec, the old Firefox for Android
   UI, was removed from mozilla-central (Bug 1580356, commit `997b7d114877`; 2,147 `.java` files, 345,851 lines under
   `mobile/android/` in `thirdparty`, `base`, `services`, `app` and `stumbler`), and so were the Robocop tests (Bug
@@ -317,18 +333,34 @@ and by 70,346 at 79 and falls by 110,629 at 151.
   about 22,700 lines) was removed (Bug 1588346). The directory came back at 75 in a newer form: commit
   `07116fe4e2b4` (Bug 1578073) added 5,946 lines of newer webrtc.org Android camera code, `sdk/android` holds 5,943
   lines at 75, and Java in Browser files rises by 5,516 lines at 75.
+- **Release 119, Rust.** In Browser files the Rust share rises from 15.62% to 17.65% (+489,534 lines). Commit
+  `c18610945143` (Bug 1853084, "Vendor windows-sys") added `third_party/rust/windows-sys/`: 281 files, 497,626 lines of
+  Rust bindings to the Windows API, generated from Microsoft's API metadata (as the crate's readme says). Without the
+  crate the share at 119 would be 15.59%, so it is the whole step; the `ntapi` crate (20,891 lines) left at the same
+  release. The crate is smaller later: 249 files and 334,283 lines at 157, 6.0% of Rust in Browser files (13.8% at 119).
 - **Release 126, Kotlin.** In All files Kotlin jumps from 36,678 to 615,415 lines because the firefox-android
   repository (Android Components, Fenix, Focus) was merged into mozilla-central on 2024-03-18 (Bug 1822248, commit
   `3b8cd5f81382`). Release 125 is counted at `FIREFOX_125_0_BUILD1`, whose branch was cut about an hour before the
   merge, so no 125 tag could include it. Java barely moves (278,159 to 279,504).
-- **Java/Kotlin as one series.** Because of the two steps above, the combined Java/Kotlin series in All files falls at
-  71 and rises at 126. In Browser files the series is small (127,821 lines, 0.5% of the view at 157) but not flat:
-  Android code outside `mobile/` counts there. Besides the WebRTC SDK step at 71 (-22,724), it doubles at 155
-  (64,480 to 127,535 lines), when 62,985 lines of generated Kotlin bindings arrived under
-  `toolkit/components/uniffi-bindgen-gecko-js/android/` (64,014 lines with their tests, most of the +65,004 step
-  in All files at 155).
-  Other steps of similar size to the one at 71 are not explained here: +15,978 at 56, +20,078 at 96, +11,943 at 106,
-  -9,357 at 48 and -8,119 at 113.
+- **Java/Kotlin as one series.** Because of the Java and Kotlin steps at 71 and 126, the combined Java/Kotlin series
+  in All files falls at 71 and rises at 126. In Browser files the series is small (127,821 lines, 0.5% of the view at
+  157) but not flat: Android code outside `mobile/` counts there. Besides the WebRTC SDK step at 71 (-22,724), it
+  doubles at 155 (64,480 to 127,535 lines), when 62,985 lines of generated Kotlin bindings arrived under
+  `toolkit/components/uniffi-bindgen-gecko-js/android/` (64,014 lines with their tests, most of the +65,004 step in All
+  files at 155). Other steps of similar size to the one at 71 are not explained here: +15,978 at 56, +20,078 at 96,
+  +11,943 at 106, -9,357 at 48 and -8,119 at 113.
+- **Release 131, HTML/CSS.** In Browser files HTML/CSS falls from 277,082 to 157,219 lines (-119,863). The update of
+  FreeType to 2.13.3 (Bug 1912903, commit `4f64bf65d3d0`) removed `modules/freetype2/docs/`, all 137 files, among them
+  FreeType's API reference in HTML (`docs/reference/`): 110,073 HTML/CSS lines (and 7,298 JavaScript lines). The new
+  tab page's three per-platform style sheets (`activity-stream-linux.css`, `-mac.css` and `-windows.css` in
+  `browser/components/newtab/css/`) became one, `activity-stream.css` (-10,933 lines), and small changes elsewhere add
+  back 1,143. In All files web-platform-tests offset part of it: HTML/CSS falls by 84,151.
+- **Release 152, JavaScript/TypeScript.** In All files JavaScript/TypeScript grows from 12,676,181 to 15,605,903 lines
+  (+2,929,722), and the JavaScript/TypeScript files of web-platform-tests from 6,868 to 60,453: web-platform-tests
+  now vendors its own copy of test262, `testing/web-platform/tests/third_party/test262/` (53,482 JavaScript files,
+  2,840,767 lines at 152). It arrived with a web-platform-tests sync committed on 2026-04-23 (commit `05939139fd15`, Bug
+  2032330, wpt PR 59244, 2,840,673 lines added). It is test code, so Browser files leave it out; the Rust share of All
+  files falls from 12.20% to 11.74% at 152 although Rust grows by 209,880 lines there.
 
 ## Known limitations and biases
 

@@ -317,14 +317,14 @@ and by 70,346 at 79 and falls by 110,629 at 151.
 
 - **Release 54, Rust.** In Browser files Rust grows from 67,654 lines (0.60% of the view) to 785,871 (6.46%), and from
   105 to 1,885 files: Servo and WebRender arrived in mozilla-central. Commit `5f7f5313de79` (Bug 1322769, "vendor
-  Servo") merged the whole servo/servo repository into `servo/`, all of it counted whether or not Firefox builds it:
-  +732 Rust files and +314,383 lines, of them 272,784 in `servo/components/` (`style` 123,206, `script` 82,418,
-  `layout` 25,051) and 41,221 in `servo/ports/` (`cef` 37,952). WebRender came to `gfx/webrender`,
-  `gfx/webrender_traits` and `gfx/webrender_bindings` (45 files, 22,687 lines; Bug 1335525). `third_party/rust/` grows
-  by 1,003 files and 380,653 lines, 378,130 of them in 115 new crates: 48 crates (191,130 lines) came with WebRender's
-  dependencies (commit `cbdf0c332f77`, Bug 1335525), 59 (170,784 lines) with Stylo's (`geckolib`) dependencies
-  (commit `b4ab990a0d87`, Bug 1336607) and 8 (16,216 lines) in other commits. In All files Rust grows from 70,437 to
-  815,996 lines.
+  Servo") merged the servo/servo repository (minus its web-platform and ref tests) into `servo/`, all of it counted
+  whether or not Firefox builds it: +732 Rust files and +314,383 lines, of them 272,784 in `servo/components/` (`style`
+  123,206, `script` 82,418, `layout` 25,051) and 41,221 in `servo/ports/` (`cef` 37,952). WebRender came to
+  `gfx/webrender`, `gfx/webrender_traits` and `gfx/webrender_bindings` (45 files, 22,687 lines; Bug 1335525).
+  `third_party/rust/` grows by 1,003 files and 380,653 lines, 378,130 of them in 115 new crates: 48 crates (191,130
+  lines) came with WebRender's dependencies (commit `cbdf0c332f77`, Bug 1335525), 59 (170,784 lines) with Stylo's
+  (`geckolib`) dependencies (commit `b4ab990a0d87`, Bug 1336607) and 8 (16,216 lines) in other commits. In All files
+  Rust grows from 70,437 to 815,996 lines.
 - **Release 71, Java.** In All files Java falls from 551,092 to 161,770 lines: Fennec, the old Firefox for Android
   UI, was removed from mozilla-central (Bug 1580356, commit `997b7d114877`; 2,147 `.java` files, 345,851 lines under
   `mobile/android/` in `thirdparty`, `base`, `services`, `app` and `stumbler`), and so were the Robocop tests (Bug
@@ -334,11 +334,10 @@ and by 70,346 at 79 and falls by 110,629 at 151.
   `07116fe4e2b4` (Bug 1578073) added 5,946 lines of newer webrtc.org Android camera code, `sdk/android` holds 5,943
   lines at 75, and Java in Browser files rises by 5,516 lines at 75.
 - **Release 119, Rust.** In Browser files the Rust share rises from 15.62% to 17.65% (+489,534 lines). Commit
-  `c18610945143` (Bug 1853084, "Vendor windows-sys") added `third_party/rust/windows-sys/`: 281 files, 497,626 lines
-  of Rust bindings to the Windows API, generated from Microsoft's API metadata (as the crate's readme says; most
-  files hold one declaration per line). Without the crate the share at 119 would be 15.59%, so it is the whole step;
-  the `ntapi` crate (20,891 lines) left at the same release. The crate is smaller later: 249 files and 334,283 lines
-  at 157, 6.0% of Rust in Browser files (13.8% at 119).
+  `c18610945143` (Bug 1853084, "Vendor windows-sys") added `third_party/rust/windows-sys/`: 281 files, 497,626 lines of
+  Rust bindings to the Windows API, generated from Microsoft's API metadata (as the crate's readme says). Without the
+  crate the share at 119 would be 15.59%, so it is the whole step; the `ntapi` crate (20,891 lines) left at the same
+  release. The crate is smaller later: 249 files and 334,283 lines at 157, 6.0% of Rust in Browser files (13.8% at 119).
 - **Release 126, Kotlin.** In All files Kotlin jumps from 36,678 to 615,415 lines because the firefox-android
   repository (Android Components, Fenix, Focus) was merged into mozilla-central on 2024-03-18 (Bug 1822248, commit
   `3b8cd5f81382`). Release 125 is counted at `FIREFOX_125_0_BUILD1`, whose branch was cut about an hour before the
@@ -353,10 +352,10 @@ and by 70,346 at 79 and falls by 110,629 at 151.
   -9,357 at 48 and -8,119 at 113.
 - **Release 131, HTML/CSS.** In Browser files HTML/CSS falls from 277,082 to 157,219 lines (-119,863). The update of
   FreeType to 2.13.3 (Bug 1912903, commit `4f64bf65d3d0`) removed `modules/freetype2/docs/`, all 137 files, among them
-  FreeType's API reference in HTML (`docs/reference/`): 110,073 HTML/CSS lines (and 7,298 JavaScript lines). The rest,
-  -10,930 lines, is the new tab page's three per-platform style sheets (`activity-stream-linux.css`, `-mac.css` and
-  `-windows.css` in `browser/components/newtab/css/`) becoming one, `activity-stream.css`. In All files
-  web-platform-tests offset part of it: HTML/CSS falls by 84,151.
+  FreeType's API reference in HTML (`docs/reference/`): 110,073 HTML/CSS lines (and 7,298 JavaScript lines). The new
+  tab page's three per-platform style sheets (`activity-stream-linux.css`, `-mac.css` and `-windows.css` in
+  `browser/components/newtab/css/`) became one, `activity-stream.css` (-10,930 lines), and small changes elsewhere add
+  back 1,140. In All files web-platform-tests offset part of it: HTML/CSS falls by 84,151.
 - **Release 152, JavaScript/TypeScript.** In All files JavaScript/TypeScript grows from 12,676,181 to 15,605,903 lines
   (+2,929,722), and the JavaScript/TypeScript files of web-platform-tests from 6,868 to 60,453: web-platform-tests
   now vendors its own copy of test262, `testing/web-platform/tests/third_party/test262/` (53,482 JavaScript files,
